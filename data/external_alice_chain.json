@@ -1,0 +1,26 @@
+[
+  {
+    "index": 0,
+    "timestamp": 1767877699937,
+    "data": {
+      "message": "Genesis Block"
+    },
+    "previousHash": "0",
+    "type": "GENESIS",
+    "signature": "",
+    "hash": "45dde3e1bedcf344897083ad3388e56332fbb9182e8d96d790d27c99f40957c7"
+  },
+  {
+    "index": 1,
+    "timestamp": 1767877787870,
+    "data": {
+      "amount": 100,
+      "toAddress": "bob",
+      "fromAddress": "alice"
+    },
+    "previousHash": "45dde3e1bedcf344897083ad3388e56332fbb9182e8d96d790d27c99f40957c7",
+    "type": "SEND",
+    "signature": "6c16e109981a8742bbd71f761f99a5c927c4f46434eb6a682de2127a5f7afb7308864e15652f881c42d0cb203a4e854b00bcb6937c0f2ac6db939335245cc9c9cbb632e7a7bee7cdf909fad1f68352d0c08270f8ace8edeb281f5e3146e7827b113c5a46966c0dbcb2847948acbaf2b72d3d075dcf19f219ea5716ddbac68833f03ae71e79b69e64b06f4a143f428186143560fd01b3c9e5658d1cdb4ed16f4fde73d740c506c6f792f552a8d609c3b9135b0c593224bbff9876585ef4314061e00be7cefd3a161745b8fbcf3575b6aaeeba7dc0be65aa28d53436c591d08fa55587f45a7fde549a1af6d16a57d717925d866f6e387124f17949dd93bb6e6ba3",
+    "hash": "49ab8ce094777e23d74edd69467ed8f03e3f6a048a068be2858f2b8c00781f25"
+  }
+]
