@@ -6,18 +6,22 @@ const MESSAGE_TYPES = {
     CHAIN_REQUEST: 'CHAIN_REQUEST',
     CHAIN_RESPONSE: 'CHAIN_RESPONSE',
     NEW_BLOCK: 'NEW_BLOCK',
-    TRANSFER_REQUEST: 'TRANSFER_REQUEST'
+    TRANSFER_REQUEST: 'TRANSFER_REQUEST',
+    ANNOUNCE_USER: 'ANNOUNCE_USER' // New Gossip Type
 };
 
 class P2P {
     constructor(port, userNode) {
         this.sockets = [];
-        this.userNode = userNode; // This might be null in Gateway Mode
+        this.userNode = userNode; 
         this.API_VERSION = '1.0.0';
         
-        // Router function for Gateway Mode
-        this.resolveNode = null; 
+        this.resolveNode = null; // Resolves LOCAL nodes
         
+        // Federation Directory: Map<userId, socket>
+        // Keeps track of which peer hosts which user.
+        this.directory = new Map();
+
         this.server = new WebSocket.Server({ port });
         this.server.on('connection', (socket, req) => this.connectSocket(socket, req));
         
@@ -50,48 +54,73 @@ class P2P {
 
         socket.on('close', () => {
             this.sockets = this.sockets.filter(s => s !== socket);
+            
+            // Clean up directory
+            for (const [userId, s] of this.directory.entries()) {
+                if (s === socket) {
+                    this.directory.delete(userId);
+                }
+            }
+            
             console.log(`Socket disconnected: ${socket.nodeId || 'unknown'}`);
         });
 
-        // If we have a default node (Legacy Mode), send handshake immediately
         if (this.userNode) {
             this.sendHandshake(socket, this.userNode);
         }
     }
 
     handleMessage(socket, message) {
-        // In Gateway Mode, we might need to route messages to specific UserNodes
-        // Currently, we assume broadcast or specific handling.
-        
-        // For Re-Public, we might host MULTIPLE nodes.
-        // Incoming messages often target a specific "toAddress".
-        // Let's see if we can resolve a local node for the message.
-        
-        let targetNode = this.userNode; // Default
+        let targetNode = this.userNode; 
 
+        // 1. Resolve Local Node
+        let targetId = null;
         if (message.type === 'NEW_BLOCK' && message.payload.data && message.payload.data.toAddress) {
+            targetId = message.payload.data.toAddress;
+        } else if (message.type === 'TRANSFER_REQUEST') {
+            targetId = message.payload.from; // Request directed at Issuer
+        }
+
+        if (targetId) {
             if (this.resolveNode) {
-                const resolved = this.resolveNode(message.payload.data.toAddress);
-                if (resolved) targetNode = resolved;
+                const resolved = this.resolveNode(targetId);
+                if (resolved) {
+                    targetNode = resolved;
+                } else if (this.directory.has(targetId)) {
+                    // 2. Resolve Remote Node (Routing)
+                    // If not local, but we know where they are, FORWARD it.
+                    const gatewaySocket = this.directory.get(targetId);
+                    if (gatewaySocket && gatewaySocket.readyState === WebSocket.OPEN) {
+                        console.log(`📡 Forwarding message for ${targetId} to gateway.`);
+                        this.send(gatewaySocket, message);
+                        return; // Handled by forwarding
+                    }
+                }
             }
         }
 
-        // Pass to handler with context
         this.processMessage(socket, message, targetNode);
     }
 
     processMessage(socket, message, node) {
-        // If no node context found for this message, we might just forward it or ignore
-        // But for Handshakes, we might want to respond with ALL hosted nodes? 
-        // Or just the gateway identity?
-        
         switch (message.type) {
             case MESSAGE_TYPES.HANDSHAKE:
-                console.log(`Received Handshake from Node: ${message.payload.nodeId}`);
+                // console.log(`Received Handshake from Node: ${message.payload.nodeId}`);
                 socket.nodeId = message.payload.nodeId;
-                // If we are a gateway, we might not have a single ID to handshake back with yet.
-                // Or we handshake as "Gateway".
-                // Ideally, we send a handshake for the specific node we represent if we initiated.
+                
+                // If the peer identifies as a specific user, add to directory
+                if (message.payload.nodeId) {
+                    this.directory.set(message.payload.nodeId, socket);
+                }
+                break;
+
+            case MESSAGE_TYPES.ANNOUNCE_USER:
+                // Gossip: "I host user X"
+                const { userId } = message.payload;
+                if (userId) {
+                    // console.log(`📖 Directory Update: ${userId} is at ${socket._peerUrl || 'peer'}`);
+                    this.directory.set(userId, socket);
+                }
                 break;
 
             case MESSAGE_TYPES.CHAIN_REQUEST:
@@ -110,9 +139,8 @@ class P2P {
             case MESSAGE_TYPES.NEW_BLOCK:
                 const block = message.payload;
                 
-                // If this is a payment to 'node'
                 if (node && block.type === 'SEND' && block.data.toAddress === node.userId) {
-                    console.log(`💰 Incoming payment for ${node.userId} from ${block.data.fromAddress}`);
+                    // console.log(`💰 Incoming payment for ${node.userId} from ${block.data.fromAddress}`);
                     try {
                         const alreadyReceived = node.chain.chain.find(b => 
                             b.type === 'RECEIVE' && b.data.senderBlockHash === block.hash
@@ -125,7 +153,7 @@ class P2P {
                                 block.hash,
                                 block.data.message
                             );
-                            console.log(`✅ Accepted Payment for ${node.userId}`);
+                            // console.log(`✅ Accepted Payment for ${node.userId}`);
                             this.broadcast({
                                 type: MESSAGE_TYPES.NEW_BLOCK,
                                 payload: receiveBlock
@@ -138,26 +166,18 @@ class P2P {
                 break;
 
             case MESSAGE_TYPES.TRANSFER_REQUEST:
-                // If the target 'from' matches one of our hosted nodes
-                if (this.resolveNode) {
-                    const issuerNode = this.resolveNode(message.payload.from);
-                    if (issuerNode) {
-                        try {
-                            const result = issuerNode.handleTransferRequest(message.payload);
-                            if (result.success) {
-                                this.broadcast({
-                                    type: MESSAGE_TYPES.NEW_BLOCK,
-                                    payload: issuerNode.chain.getLatestBlock()
-                                });
-                            }
-                        } catch (e) {
-                            console.error('Transfer Request Failed:', e.message);
+                // Only handle if local 'node' is the target issuer
+                if (node && message.payload.from === node.userId) {
+                    try {
+                        const result = node.handleTransferRequest(message.payload);
+                        if (result.success) {
+                            this.broadcast({
+                                type: MESSAGE_TYPES.NEW_BLOCK,
+                                payload: node.chain.getLatestBlock()
+                            });
                         }
-                    }
-                } else if (node) {
-                    // Legacy single node check
-                    if (message.payload.from === node.userId) {
-                         // same logic
+                    } catch (e) {
+                        console.error('Transfer Request Failed:', e.message);
                     }
                 }
                 break;
@@ -185,6 +205,14 @@ class P2P {
         });
     }
 
+    // New: Announce a user to all peers
+    announceUser(userId) {
+        this.broadcast({
+            type: MESSAGE_TYPES.ANNOUNCE_USER,
+            payload: { userId }
+        });
+    }
+
     send(socket, message) {
         if (socket.readyState === WebSocket.OPEN) {
             socket.send(JSON.stringify(message));
@@ -197,9 +225,13 @@ class P2P {
     
     getConnectedPeers() {
         return this.sockets.map(s => ({
-            nodeId: s.nodeId || 'Unknown',
+            nodeId: s.nodeId || 'Gateway',
             url: s._peerUrl || 'Incoming Connection'
         }));
+    }
+
+    getDirectoryStats() {
+        return Array.from(this.directory.keys());
     }
 }
 

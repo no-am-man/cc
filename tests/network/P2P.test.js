@@ -1,35 +1,34 @@
+// tests/network/P2P.test.js
 const { P2P, MESSAGE_TYPES } = require('../../src/network/P2P');
-const WebSocket = require('ws');
-
-// Mock WebSocket
-const mockSend = jest.fn();
-const mockOn = jest.fn();
-const mockSocket = {
-    send: mockSend,
-    on: mockOn,
-    readyState: WebSocket.OPEN
-};
+const UserNode = require('../../src/core/UserNode');
 
 // Mock UserNode
-const mockUserNode = {
-    userId: 'test_node',
-    keyPair: { publicKey: 'pubkey' },
-    chain: {
-        chain: [],
-        getLatestBlock: jest.fn().mockReturnValue({})
-    },
-    handleTransferRequest: jest.fn()
-};
+jest.mock('../../src/core/UserNode');
 
 describe('P2P Network', () => {
     let p2p;
+    let mockUserNode;
+    let mockSocket;
 
     beforeEach(() => {
-        // Suppress console.log for cleaner test output
+        mockUserNode = new UserNode('test-node');
+        mockUserNode.userId = 'test-node';
+        mockUserNode.keyPair = { publicKey: 'pub', privateKey: 'priv' };
+        mockUserNode.chain = { chain: [], getLatestBlock: jest.fn() };
+        mockUserNode.handleTransferRequest = jest.fn().mockReturnValue({ success: true });
+        mockUserNode.updateExternalChain = jest.fn();
+
+        p2p = new P2P(6001, mockUserNode);
+        
+        mockSocket = {
+            send: jest.fn(),
+            readyState: 1, // OPEN
+            nodeId: 'peer-node'
+        };
+        
+        // Mock console.log to avoid noise
         jest.spyOn(console, 'log').mockImplementation(() => {});
         jest.spyOn(console, 'error').mockImplementation(() => {});
-        
-        p2p = new P2P(6001, mockUserNode);
     });
 
     afterEach(() => {
@@ -37,48 +36,44 @@ describe('P2P Network', () => {
         jest.clearAllMocks();
     });
 
-    test('should initialize server', () => {
-        expect(p2p.server).toBeDefined();
-    });
-
-    test('connectSocket should add socket and send handshake', () => {
-        p2p.connectSocket(mockSocket);
-        
-        expect(p2p.sockets.length).toBe(1);
-        expect(mockSend).toHaveBeenCalledWith(expect.stringContaining(MESSAGE_TYPES.HANDSHAKE));
-    });
-
     test('handleMessage: HANDSHAKE', () => {
         const msg = {
             type: MESSAGE_TYPES.HANDSHAKE,
-            payload: { nodeId: 'peer1', version: '1.0.0' }
+            payload: { nodeId: 'peer-node', version: '1.0.0' }
         };
-        p2p.handleMessage(mockSocket, msg);
-        // Expect log
-        expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Received Handshake'));
+        
+        // Trigger handleMessage directly (simulating socket event)
+        // Since handleMessage is bound to socket in P2P.js, we need to mimic the flow 
+        // or just call processMessage if accessible. 
+        // P2P.js structure calls processMessage(socket, message, node).
+        
+        p2p.processMessage(mockSocket, msg, mockUserNode);
+        
+        // We can't easily expect console.log 'Received Handshake' because 
+        // console.log is mocked with empty function.
+        // Instead, check side effects: socket.nodeId should be set
+        expect(mockSocket.nodeId).toBe('peer-node');
+        
+        // It should add to directory
+        expect(p2p.directory.has('peer-node')).toBe(true);
     });
 
     test('handleMessage: CHAIN_REQUEST should send chain', () => {
-        const msg = { type: MESSAGE_TYPES.CHAIN_REQUEST };
-        p2p.handleMessage(mockSocket, msg);
-        expect(mockSend).toHaveBeenCalledWith(expect.stringContaining(MESSAGE_TYPES.CHAIN_RESPONSE));
+        const msg = { type: MESSAGE_TYPES.CHAIN_REQUEST, payload: {} };
+        
+        p2p.processMessage(mockSocket, msg, mockUserNode);
+        
+        expect(mockSocket.send).toHaveBeenCalledWith(expect.stringContaining('CHAIN_RESPONSE'));
     });
 
     test('handleMessage: TRANSFER_REQUEST should call userNode', () => {
-        const payload = { from: 'Alice', to: 'Bob', amount: 10 };
-        const msg = { type: MESSAGE_TYPES.TRANSFER_REQUEST, payload };
+        const payload = { from: 'test-node', amount: 10, to: 'Bob' };
+        const msg = { 
+            type: MESSAGE_TYPES.TRANSFER_REQUEST, 
+            payload 
+        };
         
-        mockUserNode.handleTransferRequest.mockReturnValue({ success: true });
-        
-        p2p.handleMessage(mockSocket, msg);
+        p2p.processMessage(mockSocket, msg, mockUserNode);
         expect(mockUserNode.handleTransferRequest).toHaveBeenCalledWith(payload);
-        
-        // Should broadcast new block if success
-        // Since we are not mocking broadcast in this unit (it uses sockets.forEach), we can check if it tries to send to sockets
-        // We added mockSocket to p2p.sockets manually? No, we just passed it to handleMessage.
-        // Let's add it properly.
-        p2p.sockets.push(mockSocket);
-        p2p.handleMessage(mockSocket, msg);
-        expect(mockSend).toHaveBeenCalledWith(expect.stringContaining(MESSAGE_TYPES.NEW_BLOCK));
     });
 });

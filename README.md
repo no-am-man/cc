@@ -15,11 +15,13 @@ A Decentralized Mutual Credit System built on a Block Lattice architecture (Node
 *   **Mutual Credit**: You issue your own currency. "Money" is just credit you extend to others.
 *   **Silver Peg**: All currencies are denominated in Grams of Silver. The system fetches live spot prices.
 *   **Crypto Barter**: Hold coins from Alice? You can send them to Bob directly (Third-Party Transfer).
+*   **Transaction Messages**: Attach free-text messages to any payment.
 
 ### 3. Trust & Security
 *   **Trust Lines**: You can whitelist who is allowed to pay you. "I only accept coins from Bob and Charlie."
 *   **JavaScript Mining**: Transactions are validated by executing sandboxed JavaScript smart contracts.
 *   **P2P Mesh**: Nodes connect via WebSockets to sync chains and broadcast transactions.
+*   **Federation Discovery**: Global Directory shares active users across connected servers.
 
 ## 🚀 Getting Started
 
@@ -71,6 +73,7 @@ Open `http://localhost:3000`.
 2.  **Mint**: Create some coins (Credit).
 3.  **Connect**: Add a peer's P2P URL (e.g., `ws://localhost:6002`) in the Address Book.
 4.  **Transact**: Send money, swap assets, or manage Trust Lines.
+5.  **Local Republics**: See who else is hosted on your server in the dashboard.
 
 ## 🛠 Architecture
 
@@ -81,7 +84,7 @@ Open `http://localhost:3000`.
 
 ## 🧪 Testing
 
-Run the full test suite (Core + API + P2P):
+Run the full test suite:
 ```bash
 npm test
 ```

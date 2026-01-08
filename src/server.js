@@ -13,13 +13,8 @@ const app = express();
 const HTTP_PORT = process.env.PORT || 3000;
 const P2P_PORT = process.env.P2P_PORT || 6001;
 
-// --- Global State ---
-// Map<userId, { node: UserNode, p2p: P2P }>
-// In a real cloud wallet, this would likely be unloaded/loaded from DB to memory.
-// For this demo, we keep active nodes in memory.
 const activeNodes = new Map();
 
-// --- Middleware ---
 app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname, '../public')));
 app.use(session({
@@ -30,7 +25,6 @@ app.use(session({
 app.use(passport.initialize());
 app.use(passport.session());
 
-// --- Auth Strategy ---
 passport.serializeUser((user, done) => {
     done(null, user);
 });
@@ -50,11 +44,8 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
     }));
 }
 
-// --- Helper: Get or Create Node for User ---
 function getNodeForUser(userId) {
     if (!userId) return null;
-    
-    // Normalize ID (emails as IDs)
     const normalizedId = userId.toLowerCase();
 
     if (activeNodes.has(normalizedId)) {
@@ -62,39 +53,18 @@ function getNodeForUser(userId) {
     }
 
     console.log(`✨ Spawning Re-Public Node for: ${normalizedId}`);
-    
-    // Create new Node instance
     const node = new UserNode(normalizedId);
-    
-    // We need a P2P layer for this user.
-    // CHALLENGE: We can't bind 1000 ports for 1000 users.
-    // ARCHITECTURE SHIFT: 
-    // 1. Single P2P Gateway (Port 6001) that routes messages to specific UserNodes based on "to" field?
-    // 2. Or simplified: This server acts as a "Host" for multiple nodes.
-    // 
-    // For this "Re-Public" vision where "Email = NodeID", it implies a Personal Server.
-    // But if we are running ONE server hosting MANY users (Cloud Wallet), we need a Router.
-    //
-    // Let's implement a Shared P2P Gateway.
-    // The Gateway receives a message, checks "toAddress" (if available) or "nodeId" in handshake, 
-    // and routes it to the correct in-memory UserNode.
-    //
-    // For simplicity in this step: We will use a Singleton P2P Manager that manages all connections
-    // and routes logic to specific `UserNode` instances.
-    
     const instance = { node };
     activeNodes.set(normalizedId, instance);
+    
+    if (p2pGateway) {
+        p2pGateway.announceUser(normalizedId);
+    }
+
     return instance;
 }
 
-// --- Shared P2P Gateway ---
-// This acts as the "Post Office" for all users hosted on this server.
-const p2pGateway = new P2P(P2P_PORT, null); // Pass null as default node, we will inject router
-
-// Monkey-patch or extend P2P to handle routing?
-// Better: Update P2P class to accept a "NodeResolver" function instead of a single UserNode.
-// But we can't easily change P2P signature without breaking tests/other files.
-// Let's attach a router function to the gateway.
+const p2pGateway = new P2P(P2P_PORT, null);
 p2pGateway.resolveNode = (targetNodeId) => {
     if (activeNodes.has(targetNodeId)) {
         return activeNodes.get(targetNodeId).node;
@@ -102,23 +72,13 @@ p2pGateway.resolveNode = (targetNodeId) => {
     return null;
 };
 
-// Override specific handlers in P2P to route based on message content?
-// This requires P2P.js refactor. 
-// For now, let's assume we are running in "Single User Mode" if not logged in, 
-// or "Multi User Mode" if logged in.
-// actually, let's stick to the prompt: "Login with Google... email becomes nodeID".
-// This implies 1 active user per session?
-// If I login as Alice, I am Alice. If I logout and login as Bob, I am Bob.
-// So `getNodeForUser(req.user.email)` is correct.
-
-// --- Routes ---
+// Routes
 
 app.get('/auth/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
 
 app.get('/auth/google/callback', 
     passport.authenticate('google', { failureRedirect: '/' }),
     (req, res) => {
-        // Initialize Node upon login
         getNodeForUser(req.user.email);
         res.redirect('/');
     });
@@ -133,21 +93,16 @@ app.get('/user', (req, res) => {
     res.json(req.user || null);
 });
 
-// Middleware to ensure a node exists for current session
 app.use((req, res, next) => {
-    // If logged in, use their node
     if (req.user) {
         req.nodeInstance = getNodeForUser(req.user.email);
     } else {
-        // Guest / Default Node (e.g. for initial browsing or demo)
-        // Let's use a default "guest" node or the ENV defined one
         const defaultId = process.env.NODE_ID || 'guest_node';
         req.nodeInstance = getNodeForUser(defaultId);
     }
     next();
 });
 
-// --- SSE Setup ---
 const sseClients = new Set();
 app.get('/events', (req, res) => {
     res.setHeader('Content-Type', 'text/event-stream');
@@ -168,10 +123,12 @@ function broadcastSSE(type, data) {
 
 Oracle.on('price_update', (price) => broadcastSSE('price', { price }));
 
-// --- API Endpoints (Delegated to Active Node) ---
-
 app.get('/info', (req, res) => {
     const { node } = req.nodeInstance;
+    
+    // Get list of local active nodes (Republics hosted here)
+    const localRepublics = Array.from(activeNodes.keys());
+
     res.json({
         nodeId: node.userId,
         authUser: req.user ? req.user.email : null,
@@ -180,6 +137,8 @@ app.get('/info', (req, res) => {
         silverPrice: Oracle.getPrice(),
         peersCount: p2pGateway.sockets.length,
         connectedPeers: p2pGateway.getConnectedPeers(),
+        directory: p2pGateway.getDirectoryStats(), // Remote users
+        localRepublics: localRepublics, // Local users
         trustLines: Array.from(node.trustLines)
     });
 });
@@ -212,8 +171,6 @@ app.post('/send', (req, res) => {
             broadcastSSE('chain_update', { block: result.block, stats: node.chain.getInflationStats() });
             res.json({ success: true, block: result.block });
         } else {
-            // Remote request
-            // Ideally target specific peer
             p2pGateway.broadcast({ type: 'TRANSFER_REQUEST', payload: result.request });
             res.json({ success: true, message: 'Transfer Request Sent' });
         }
@@ -236,7 +193,6 @@ app.post('/trust', (req, res) => {
     res.json({ success: true, trustLines: Array.from(node.trustLines) });
 });
 
-// Start Server
 app.listen(HTTP_PORT, () => {
     console.log(`Re-Public Node Server running on ${HTTP_PORT}`);
     console.log(`P2P Gateway running on ${P2P_PORT}`);

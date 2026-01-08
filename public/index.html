@@ -146,9 +146,25 @@
 
                 <!-- Active Connections -->
                 <div style="margin-bottom: 20px;">
-                    <label class="label">Active Connections</label>
+                    <label class="label">Federation Peers (Servers)</label>
                     <div id="connectedPeersList" style="font-size: 0.9em; margin-top: 5px; color: #666;">
                         No active peers.
+                    </div>
+                </div>
+
+                <!-- Global Directory -->
+                <div style="margin-bottom: 20px;">
+                    <label class="label">Remote User Directory</label>
+                    <div id="directoryList" style="font-size: 0.9em; margin-top: 5px; color: #666;">
+                        No known remote users.
+                    </div>
+                </div>
+
+                <!-- Local Republics -->
+                <div style="margin-bottom: 20px;">
+                    <label class="label">Local Republics (On This Server)</label>
+                    <div id="localRepublicsList" style="font-size: 0.9em; margin-top: 5px; color: #666;">
+                        Loading...
                     </div>
                 </div>
 
@@ -195,6 +211,8 @@
                 updateUI(data);
                 updateAuthStatus(data.authUser);
                 updateConnectedPeers(data.connectedPeers);
+                updateDirectory(data.directory);
+                updateLocalRepublics(data.localRepublics);
                 updateTrustLines(data.trustLines || []);
             } catch (e) {
                 console.error("Error fetching info:", e);
@@ -225,8 +243,6 @@
         // --- Render Helpers ---
 
         function updateUI(data) {
-            // Note: nodeId is currently fixed at startup via ENV
-            // But Google Auth user is displayed separately
             if (data.nodeId) document.getElementById('nodeId').innerText = `ID: ${data.nodeId}`;
             if (data.inflationStats) {
                 updateStat('totalSupply', data.inflationStats.totalMinted);
@@ -271,8 +287,59 @@
                     <span class="pill">${p.url}</span>
                 </div>
             `).join('');
+        }
+
+        function updateDirectory(users) {
+            const container = document.getElementById('directoryList');
+            if (!users || users.length === 0) {
+                container.innerHTML = 'No known remote users.';
+                return;
+            }
+            container.innerHTML = users.map(u => `
+                <div class="list-item">
+                    <span>${u}</span>
+                    <span class="pill">Remote</span>
+                </div>
+            `).join('');
+            
+            updateAutocomplete(users);
+        }
+
+        function updateLocalRepublics(users) {
+            const container = document.getElementById('localRepublicsList');
+            // Filter out self
+            const others = users ? users.filter(u => u !== myNodeId) : [];
+            
+            if (others.length === 0) {
+                container.innerHTML = 'No other active users on this server.';
+                return;
+            }
+            container.innerHTML = others.map(u => `
+                <div class="list-item">
+                    <span>${u}</span>
+                    <span class="pill" style="background: #e8f8f5; color: #27ae60;">Local</span>
+                </div>
+            `).join('');
+            
+            updateAutocomplete(users); // Merge all into autocomplete
+        }
+
+        function updateAutocomplete(newUsers) {
             const datalist = document.getElementById('peerList');
-            datalist.innerHTML = peers.map(p => `<option value="${p.nodeId}">`).join('');
+            // Get existing options
+            const currentOptions = new Set();
+            for (let opt of datalist.options) {
+                currentOptions.add(opt.value);
+            }
+            
+            // Add new ones
+            if (newUsers) {
+                newUsers.forEach(u => currentOptions.add(u));
+            }
+            
+            let optionsHtml = '';
+            currentOptions.forEach(u => optionsHtml += `<option value="${u}">`);
+            datalist.innerHTML = optionsHtml;
         }
 
         function updateTrustLines(lines) {
