@@ -181,6 +181,9 @@ class P2P {
                     }
                 }
                 break;
+            default:
+                console.error('Unknown message type:', message.type);
+                break;
         }
     }
 

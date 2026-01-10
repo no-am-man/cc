@@ -1,79 +1,123 @@
-// tests/network/P2P.test.js
 const { P2P, MESSAGE_TYPES } = require('../../src/network/P2P');
 const UserNode = require('../../src/core/UserNode');
+const WebSocket = require('ws');
 
-// Mock UserNode
-jest.mock('../../src/core/UserNode');
+jest.mock('ws');
 
 describe('P2P Network', () => {
     let p2p;
     let mockUserNode;
     let mockSocket;
+    let mockServerInstance;
 
     beforeEach(() => {
+        WebSocket.Server.mockClear();
+        WebSocket.mockClear();
+
         mockUserNode = new UserNode('test-node');
         mockUserNode.userId = 'test-node';
-        mockUserNode.keyPair = { publicKey: 'pub', privateKey: 'priv' };
-        mockUserNode.chain = { chain: [], getLatestBlock: jest.fn() };
-        mockUserNode.handleTransferRequest = jest.fn().mockReturnValue({ success: true });
+        mockUserNode.keyPair = { publicKey: 'pub' };
+        mockUserNode.chain = {
+            chain: [{ index: 0, hash: 'genesis' }],
+            getLatestBlock: jest.fn(),
+            receiveTransaction: jest.fn().mockReturnValue({ hash: 'received' })
+        };
+        mockUserNode.handleTransferRequest = jest.fn();
         mockUserNode.updateExternalChain = jest.fn();
 
         p2p = new P2P(6001, mockUserNode);
-        
+        mockServerInstance = WebSocket.Server.mock.instances[0];
+
+        jest.spyOn(p2p, 'send');
+        jest.spyOn(p2p, 'broadcast');
+        jest.spyOn(p2p, 'processMessage');
+
         mockSocket = {
             send: jest.fn(),
-            readyState: 1, // OPEN
-            nodeId: 'peer-node'
+            readyState: WebSocket.OPEN,
+            nodeId: 'peer-node',
+            on: jest.fn(),
+            close: jest.fn(),
+            _peerUrl: 'ws://peer-url:6001'
         };
-        
-        // Mock console.log to avoid noise
+
         jest.spyOn(console, 'log').mockImplementation(() => {});
         jest.spyOn(console, 'error').mockImplementation(() => {});
     });
 
     afterEach(() => {
-        p2p.server.close();
-        jest.clearAllMocks();
+        if (p2p.server && p2p.server.close) p2p.server.close();
+        jest.restoreAllMocks();
     });
 
-    test('handleMessage: HANDSHAKE', () => {
-        const msg = {
-            type: MESSAGE_TYPES.HANDSHAKE,
-            payload: { nodeId: 'peer-node', version: '1.0.0' }
-        };
+    describe('Connection Handling', () => {
+        test('should handle server connection and assign remoteAddress', () => {
+            const req = { socket: { remoteAddress: '127.0.0.1' } };
+            const connectionHandler = mockServerInstance.on.mock.calls.find(c => c[0] === 'connection')[1];
+            connectionHandler(mockSocket, req);
+            expect(mockSocket._peerUrl).toBe('127.0.0.1');
+            expect(p2p.sockets).toContain(mockSocket);
+        });
+
+        test('should handle peer connection error', () => {
+            p2p.connectToPeer('ws://error-peer');
+            const wsInstance = WebSocket.mock.instances[WebSocket.mock.instances.length - 1];
+            const errorHandler = wsInstance.on.mock.calls.find(c => c[0] === 'error')[1];
+            const error = new Error('Connection failed');
+            errorHandler(error);
+            expect(console.error).toHaveBeenCalledWith('Connection error with ws://error-peer:', error.message);
+        });
+
+        test('should handle socket closure and clean up directory', () => {
+            p2p.directory.set('peer-node', mockSocket);
+            p2p.connectSocket(mockSocket);
+            const closeHandler = mockSocket.on.mock.calls.find(call => call[0] === 'close')[1];
+            closeHandler();
+            expect(p2p.sockets).not.toContain(mockSocket);
+            expect(p2p.directory.has('peer-node')).toBe(false);
+        });
         
-        // Trigger handleMessage directly (simulating socket event)
-        // Since handleMessage is bound to socket in P2P.js, we need to mimic the flow 
-        // or just call processMessage if accessible. 
-        // P2P.js structure calls processMessage(socket, message, node).
-        
-        p2p.processMessage(mockSocket, msg, mockUserNode);
-        
-        // We can't easily expect console.log 'Received Handshake' because 
-        // console.log is mocked with empty function.
-        // Instead, check side effects: socket.nodeId should be set
-        expect(mockSocket.nodeId).toBe('peer-node');
-        
-        // It should add to directory
-        expect(p2p.directory.has('peer-node')).toBe(true);
+        test('should handle invalid JSON message', () => {
+            p2p.connectSocket(mockSocket);
+            const messageHandler = mockSocket.on.mock.calls.find(call => call[0] === 'message')[1];
+            messageHandler('invalid-json');
+            expect(console.error).toHaveBeenCalledWith('Failed to parse message:', expect.any(Error));
+        });
     });
 
-    test('handleMessage: CHAIN_REQUEST should send chain', () => {
-        const msg = { type: MESSAGE_TYPES.CHAIN_REQUEST, payload: {} };
-        
-        p2p.processMessage(mockSocket, msg, mockUserNode);
-        
-        expect(mockSocket.send).toHaveBeenCalledWith(expect.stringContaining('CHAIN_RESPONSE'));
-    });
+    describe('Message Routing and Processing', () => {
+        test('should handle CHAIN_REQUEST and send chain back', () => {
+            p2p.processMessage(mockSocket, { type: MESSAGE_TYPES.CHAIN_REQUEST }, mockUserNode);
+            expect(p2p.send).toHaveBeenCalledWith(mockSocket, expect.objectContaining({ type: MESSAGE_TYPES.CHAIN_RESPONSE }));
+        });
 
-    test('handleMessage: TRANSFER_REQUEST should call userNode', () => {
-        const payload = { from: 'test-node', amount: 10, to: 'Bob' };
-        const msg = { 
-            type: MESSAGE_TYPES.TRANSFER_REQUEST, 
-            payload 
-        };
+        test('should handle CHAIN_RESPONSE and update external chain', () => {
+            const chain = [{ index: 1 }];
+            p2p.processMessage(mockSocket, { type: MESSAGE_TYPES.CHAIN_RESPONSE, payload: { nodeId: 'remote', chain } }, mockUserNode);
+            expect(mockUserNode.updateExternalChain).toHaveBeenCalledWith('remote', chain);
+        });
+
+        test('should forward message if target is in directory', () => {
+            const gatewaySocket = { send: jest.fn(), readyState: WebSocket.OPEN };
+            p2p.directory.set('remote-user', gatewaySocket);
+            p2p.resolveNode = jest.fn().mockReturnValue(null); // Ensure it doesn't resolve locally
+
+            const msg = { type: MESSAGE_TYPES.TRANSFER_REQUEST, payload: { from: 'remote-user' } };
+            p2p.handleMessage(mockSocket, msg);
+            
+            expect(gatewaySocket.send).toHaveBeenCalledWith(JSON.stringify(msg));
+            expect(p2p.processMessage).not.toHaveBeenCalled();
+        });
         
-        p2p.processMessage(mockSocket, msg, mockUserNode);
-        expect(mockUserNode.handleTransferRequest).toHaveBeenCalledWith(payload);
+        test('should not forward if gateway socket is closed', () => {
+            const gatewaySocket = { send: jest.fn(), readyState: WebSocket.CLOSED };
+            p2p.directory.set('remote-user', gatewaySocket);
+            p2p.resolveNode = jest.fn();
+
+            const msg = { type: MESSAGE_TYPES.TRANSFER_REQUEST, payload: { from: 'remote-user' } };
+            p2p.handleMessage(mockSocket, msg);
+            expect(gatewaySocket.send).not.toHaveBeenCalled();
+            expect(p2p.processMessage).toHaveBeenCalledWith(mockSocket, msg, mockUserNode);
+        });
     });
 });
