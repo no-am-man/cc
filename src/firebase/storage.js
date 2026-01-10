@@ -1,6 +1,7 @@
 import { getFirestore, doc, getDoc, setDoc, collection, getDocs } from 'firebase/firestore';
 import app from './firebase';
 
+// Pass the app instance explicitly to getFirestore
 const db = getFirestore(app);
 
 // Helper to save a document
@@ -45,4 +46,3 @@ export const getCollectionDocs = async (collectionName) => {
         return [];
     }
 }
-

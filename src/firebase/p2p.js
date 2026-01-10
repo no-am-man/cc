@@ -1,12 +1,12 @@
-
-const { getFirestore, collection, addDoc, onSnapshot } = require("firebase/firestore");
+import { getFirestore, collection, addDoc, onSnapshot } from "firebase/firestore";
+import app from './firebase';
 
 /**
  * Broadcasts a new block to the network using Firestore.
  * @param {object} block - The block to be broadcasted.
  */
 const broadcastBlock = async (block) => {
-  const db = getFirestore();
+  const db = getFirestore(app);
   try {
     const docRef = await addDoc(collection(db, "blocks"), block);
     console.log("Block broadcasted with ID: ", docRef.id);
@@ -21,7 +21,7 @@ const broadcastBlock = async (block) => {
  * @returns {function} - The unsubscribe function.
  */
 const listenForBlocks = (callback) => {
-  const db = getFirestore();
+  const db = getFirestore(app);
   const q = collection(db, "blocks");
 
   const unsubscribe = onSnapshot(q, (querySnapshot) => {
@@ -33,4 +33,4 @@ const listenForBlocks = (callback) => {
   return unsubscribe;
 };
 
-module.exports = { broadcastBlock, listenForBlocks };
+export { broadcastBlock, listenForBlocks };
