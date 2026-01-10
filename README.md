@@ -1,94 +1,56 @@
-# CC Federation (Re-Public)
 
-A Decentralized Mutual Credit System built on a Block Lattice architecture (Node.js).
+# CC Multichain Node on Next.js
 
-> **Concept**: 1 CC is pegged to 1 gram of Silver. Users issue their own credit (Personal Chains) and can hold negative balances. Trust is managed via Reputation and Trust Lines.
+Version: 2.0.0
 
-## 🌟 Features
+This project is a multichain node built with Next.js and deployed on Firebase App Hosting. It provides a secure and scalable platform for interacting with multiple blockchains.
 
-### 1. "Re-Public" Identity
-*   **Email = Node ID**: Login with Google, and your email becomes your sovereign Blockchain Identity (e.g., `alice@gmail.com`).
-*   **Multi-Tenancy**: A single server can host multiple "Republics" (User Nodes).
-*   **Persistence**: Your chain and keys are saved to disk (`data/`).
+## Features
 
-### 2. The Economy
-*   **Mutual Credit**: You issue your own currency. "Money" is just credit you extend to others.
-*   **Silver Peg**: All currencies are denominated in Grams of Silver. The system fetches live spot prices.
-*   **Crypto Barter**: Hold coins from Alice? You can send them to Bob directly (Third-Party Transfer).
-*   **Transaction Messages**: Attach free-text messages to any payment.
+*   **Next.js:** A popular React framework for building server-rendered and statically generated web applications.
+*   **Firebase App Hosting:** A fully managed, serverless platform for deploying modern web applications.
+*   **Next-Auth:** A complete open-source authentication solution for Next.js applications.
+*   **Modular Firebase SDK:** A modern, tree-shakable SDK for interacting with Firebase services.
 
-### 3. Trust & Security
-*   **Trust Lines**: You can whitelist who is allowed to pay you. "I only accept coins from Bob and Charlie."
-*   **JavaScript Mining**: Transactions are validated by executing sandboxed JavaScript smart contracts.
-*   **P2P Mesh**: Nodes connect via WebSockets to sync chains and broadcast transactions.
-*   **Federation Discovery**: Global Directory shares active users across connected servers.
+## Getting Started
 
-## 🚀 Getting Started
+1.  **Clone the repository:**
 
-### Prerequisites
-*   Node.js (v14+)
-*   Google OAuth Credentials (for Login)
-*   MetalPriceAPI Key (Optional, for live Silver price)
-
-### Installation
-
-1.  **Clone the Repository**
     ```bash
-    git clone https://github.com/your-username/cc-federation.git
-    cd cc-federation
+    git clone https://github.com/your-username/your-repository.git
     ```
 
-2.  **Install Dependencies**
+2.  **Install the dependencies:**
+
     ```bash
     npm install
     ```
 
-3.  **Configure Environment**
-    Create a `.env` file:
-    ```env
-    PORT=3000
-    P2P_PORT=6001
-    SESSION_SECRET=your_random_secret
-    GOOGLE_CLIENT_ID=your_google_client_id
-    GOOGLE_CLIENT_SECRET=your_google_client_secret
-    METAL_PRICE_API_KEY=your_metalprice_api_key
+3.  **Set up your environment variables:**
+
+    Create a `.env.local` file in the root of your project and add the following:
+
+    ```
+    # Firebase
+    NEXT_PUBLIC_FIREBASE_API_KEY=YOUR_API_KEY
+    NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=YOUR_AUTH_DOMAIN
+    NEXT_PUBLIC_FIREBASE_PROJECT_ID=YOUR_PROJECT_ID
+    NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=YOUR_STORAGE_BUCKET
+    NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=YOUR_MESSAGING_SENDER_ID
+    NEXT_PUBLIC_FIREBASE_APP_ID=YOUR_APP_ID
+    NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID=YOUR_MEASUREMENT_ID
+
+    # Next-Auth
+    NEXTAUTH_URL=http://localhost:3000
+    NEXTAUTH_SECRET=YOUR_SECRET
     ```
 
-### Running the Node
+4.  **Run the development server:**
 
-**Start the Server:**
-```bash
-npm start
-```
+    ```bash
+    npm run dev
+    ```
 
-**Development Mode (2 Nodes):**
-Simulate a network with Alice (Port 3000) and Bob (Port 3001) on one machine:
-```bash
-npm run dev
-```
+## Deployment
 
-### Using the UI
-Open `http://localhost:3000`.
-1.  **Login**: Sign in with Google to spawn your Personal Node.
-2.  **Mint**: Create some coins (Credit).
-3.  **Connect**: Add a peer's P2P URL (e.g., `ws://localhost:6002`) in the Address Book.
-4.  **Transact**: Send money, swap assets, or manage Trust Lines.
-5.  **Local Republics**: See who else is hosted on your server in the dashboard.
-
-## 🛠 Architecture
-
-*   **`src/core`**: The Blockchain Engine (Block, UserChain, UserNode).
-*   **`src/network`**: P2P Gateway and WebSocket logic.
-*   **`src/server.js`**: The Host Server (Express + Passport Auth).
-*   **`data/`**: JSON persistence layer (Chains, Keys, Trust Lists).
-
-## 🧪 Testing
-
-Run the full test suite:
-```bash
-npm test
-```
-
-## 📜 License
-
-MIT License. Open for global federation.
+This project is deployed on Firebase App Hosting. To deploy your own instance, you will need to create a Firebase project and a Firebase App Hosting backend. You can find more information in the [Firebase App Hosting documentation](https://firebase.google.com/docs/app-hosting).

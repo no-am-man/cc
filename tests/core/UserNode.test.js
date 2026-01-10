@@ -1,6 +1,15 @@
+
+// Mock the p2p module to prevent network/Firebase errors during tests
+jest.mock('../../src/firebase/p2p', () => ({
+    broadcastBlock: jest.fn(),
+    listenForBlocks: jest.fn(),
+}));
+
 const UserNode = require('../../src/core/UserNode');
 const fs = require('fs');
 const path = require('path');
+// Import the mocked function to check if it's called
+const { broadcastBlock } = require('../../src/firebase/p2p');
 
 describe('UserNode Class', () => {
     let node;
@@ -11,6 +20,9 @@ describe('UserNode Class', () => {
     const trustFile = path.join(dataDir, `${testUserId}_trust.json`);
 
     beforeEach(() => {
+        // Clear mock history before each test
+        broadcastBlock.mockClear();
+
         if (!fs.existsSync(dataDir)) {
             fs.mkdirSync(dataDir, { recursive: true });
         }
@@ -38,12 +50,13 @@ describe('UserNode Class', () => {
         expect(node2.keyPair.publicKey).toBe(firstKeys.publicKey);
     });
 
-    test('should mint coins and persist chain', () => {
-        node.mint(100);
+    test('should mint coins and broadcast the block', () => {
+        const block = node.mint(100);
         expect(node.chain.state.balance).toBe(100);
         expect(fs.existsSync(chainFile)).toBe(true);
         const data = JSON.parse(fs.readFileSync(chainFile, 'utf8'));
         expect(data.length).toBe(2);
+        expect(broadcastBlock).toHaveBeenCalledWith(block);
     });
 
     test('should load chain from disk on startup', () => {
@@ -104,10 +117,11 @@ describe('UserNode Class', () => {
             expect(() => node.handleTransferRequest(req)).toThrow("Insufficient funds");
         });
 
-        test('sendAsset should return LOCAL for native sends', () => {
+        test('sendAsset should return LOCAL for native sends and broadcast', () => {
             const result = node.sendAsset(testUserId, 10, 'recipient');
             expect(result.type).toBe('LOCAL');
             expect(result.block).toBeDefined();
+            expect(broadcastBlock).toHaveBeenCalledWith(result.block);
         });
 
         test('sendAsset should return REMOTE for third-party transfers', () => {
@@ -115,17 +129,20 @@ describe('UserNode Class', () => {
             expect(result.type).toBe('REMOTE');
             expect(result.targetNode).toBe('another_issuer');
             expect(result.request.signature).toBeDefined();
+            expect(broadcastBlock).not.toHaveBeenCalled();
         });
 
         test('receiveTransaction should throw error for untrusted source', () => {
             node.addTrustLine('trusted_friend');
             expect(() => node.receiveTransaction('untrusted_source', 10, 'some_hash')).toThrow('Trust Error');
+            expect(broadcastBlock).not.toHaveBeenCalled();
         });
 
-        test('receiveTransaction should succeed for trusted source', () => {
+        test('receiveTransaction should succeed for trusted source and broadcast', () => {
             node.addTrustLine('trusted_friend');
             const block = node.receiveTransaction('trusted_friend', 10, 'some_hash');
             expect(block).toBeDefined();
+            expect(broadcastBlock).toHaveBeenCalledWith(block);
         });
     });
     
@@ -146,7 +163,7 @@ describe('UserNode Class', () => {
         });
     });
 
-    test('handleTransferRequest should execute successfully if valid', () => {
+    test('handleTransferRequest should execute successfully and broadcast', () => {
         node.chain.createBlock('CONTRACT', {
             code: `state.ledger = { 'alice': 100 };`,
             params: {}
@@ -163,5 +180,7 @@ describe('UserNode Class', () => {
         expect(result.success).toBe(true);
         expect(node.chain.state.ledger['alice']).toBe(50);
         expect(node.chain.state.ledger['bob']).toBe(50);
+        const latestBlock = node.chain.getLatestBlock();
+        expect(broadcastBlock).toHaveBeenCalledWith(latestBlock);
     });
 });

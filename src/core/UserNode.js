@@ -1,9 +1,10 @@
-// src/core/UserNode.js
+
 const UserChain = require('./UserChain');
 const Portfolio = require('../wallet/Portfolio');
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
+const { broadcastBlock, listenForBlocks } = require('../firebase/p2p');
 
 class UserNode {
   constructor(userId) {
@@ -34,6 +35,27 @@ class UserNode {
 
     // Peer list (simplified)
     this.peers = []; 
+
+    // Listen for new blocks from the network
+    listenForBlocks((block) => this.handleIncomingBlock(block));
+  }
+
+  handleIncomingBlock(block) {
+    // Basic validation
+    if (!block || !block.type || !block.hash) {
+      console.error('Invalid block received:', block);
+      return;
+    }
+
+    // Avoid processing own blocks
+    if (block.publicKey === this.keyPair.publicKey) {
+      return;
+    }
+
+    console.log(`Received block of type ${block.type} from the network.`);
+
+    // Add more advanced validation and processing logic here
+    // For example, checking the block's signature and adding it to the chain
   }
 
   loadOrGenerateKeys() {
@@ -175,6 +197,7 @@ class UserNode {
           params: {}
       });
       this.saveChain();
+      broadcastBlock(block);
       return { success: true, txId: block.hash };
   }
 
@@ -192,12 +215,14 @@ class UserNode {
   mint(amount) {
       const block = this.chain.mint(amount);
       this.saveChain();
+      broadcastBlock(block);
       return block;
   }
 
   createTransaction(amount, toAddress, message = '') {
       const block = this.chain.createTransaction(amount, toAddress, message);
       this.saveChain();
+      broadcastBlock(block);
       return block;
   }
 
@@ -207,7 +232,8 @@ class UserNode {
   sendAsset(issuerId, amount, toAddress, message = '') {
       if (issuerId === this.userId) {
           // Native Send
-          return { type: 'LOCAL', block: this.createTransaction(amount, toAddress, message) };
+          const block = this.createTransaction(amount, toAddress, message);
+          return { type: 'LOCAL', block };
       } else {
           // Third-Party Transfer
           const request = {
@@ -234,6 +260,7 @@ class UserNode {
       }
       const block = this.chain.receiveTransaction(fromAddress, amount, senderBlockHash, message);
       this.saveChain();
+      broadcastBlock(block);
       return block;
   }
 }
