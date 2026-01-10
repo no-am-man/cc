@@ -1,6 +1,6 @@
 // src/core/UserChain.js
 const Block = require('./Block');
-const ContractRunner = require('./ContractRunner');
+const BlockProcessor = require('./logic/BlockProcessor');
 
 class UserChain {
   constructor(userId, keyPair) {
@@ -13,6 +13,7 @@ class UserChain {
         totalSupply: 0,
         transactionCount: 0
     };
+    this.processor = new BlockProcessor();
   }
 
   createGenesisBlock() {
@@ -61,6 +62,12 @@ class UserChain {
           throw new Error("Invalid block index");
       }
 
+      // Check hash integrity
+      const blockObj = block instanceof Block ? block : Object.assign(new Block(), block);
+      if (blockObj.hash !== blockObj.calculateHash()) {
+          throw new Error("Invalid block hash");
+      }
+
       // 2. Signature validation
       if (this.keyPair && this.keyPair.publicKey) {
            const blockObj = block instanceof Block ? block : Object.assign(new Block(), block);
@@ -77,37 +84,7 @@ class UserChain {
   }
 
   updateState(block) {
-      const newState = { ...this.state };
-
-      switch (block.type) {
-          case 'MINT':
-              if (block.data.amount <= 0) throw new Error("Mint amount must be positive");
-              newState.balance += block.data.amount;
-              newState.totalSupply += block.data.amount;
-              break;
-
-          case 'SEND':
-              newState.balance -= block.data.amount;
-              break;
-
-          case 'RECEIVE':
-              newState.balance += block.data.amount;
-              break;
-
-          case 'CONTRACT':
-               const runner = new ContractRunner();
-               const contractResultState = runner.execute(
-                   block.data.code, 
-                   newState, 
-                   block.data.params, 
-                   block.timestamp
-               );
-               Object.assign(newState, contractResultState);
-               break;
-      }
-
-      newState.transactionCount++;
-      this.state = newState;
+      this.state = this.processor.process(block, this.state);
   }
 
   mint(amount) {

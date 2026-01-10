@@ -9,12 +9,12 @@ export default async function handler(req, res) {
 
   const session = await getSession({ req });
   const userId = session?.user?.email || process.env.NODE_ID || 'guest_node';
-  const node = getNodeForUser(userId);
+  const node = await getNodeForUser(userId);
 
   const { amount } = req.body;
 
   try {
-    const block = node.mint(amount);
+    const block = await node.mint(amount);
     // In a real app, you would broadcast this to other nodes
     res.status(200).json({ success: true, block });
   } catch (error) {

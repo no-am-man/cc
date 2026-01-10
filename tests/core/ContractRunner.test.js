@@ -55,4 +55,13 @@ describe('ContractRunner Class', () => {
             runner.execute(code, state, {}, Date.now());
         }).toThrow("Math.random is not allowed");
     });
+
+    test('should use block timestamp for Date.now()', () => {
+        const code = "state.time = Date.now();";
+        const state = {};
+        const blockTimestamp = 1234567890;
+        
+        const newState = runner.execute(code, state, {}, blockTimestamp);
+        expect(newState.time).toBe(blockTimestamp);
+    });
 });

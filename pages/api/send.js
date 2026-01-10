@@ -9,13 +9,13 @@ export default async function handler(req, res) {
 
   const session = await getSession({ req });
   const userId = session?.user?.email || process.env.NODE_ID || 'guest_node';
-  const node = getNodeForUser(userId);
+  const node = await getNodeForUser(userId);
 
   const { amount, to, asset, message } = req.body;
   const targetAsset = asset || node.userId;
 
   try {
-    const result = node.sendAsset(targetAsset, amount, to, message);
+    const result = await node.sendAsset(targetAsset, amount, to, message);
     
     // The new UserNode handles broadcasting internally via Firebase
     res.status(200).json({ success: true, result });

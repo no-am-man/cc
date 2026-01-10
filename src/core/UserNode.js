@@ -1,125 +1,116 @@
-
-const UserChain = require('./UserChain');
-const Portfolio = require('../wallet/Portfolio');
-const crypto = require('crypto');
-const fs = require('fs');
-const path = require('path');
-const { broadcastBlock, listenForBlocks } = require('../firebase/p2p');
+import UserChain from './UserChain';
+import Portfolio from '../wallet/Portfolio';
+import TransactionFactory from './logic/TransactionFactory';
+import crypto from 'crypto';
+import { broadcastBlock, listenForBlocks } from '../firebase/p2p';
+import { saveDocument, getDocument, getCollectionDocs } from '../firebase/storage';
 
 class UserNode {
   constructor(userId) {
     this.userId = userId;
-    this.dataDir = path.join(__dirname, '../../data');
+    this.initialized = false;
     
-    // Ensure data directory exists
-    if (!fs.existsSync(this.dataDir)) {
-        fs.mkdirSync(this.dataDir, { recursive: true });
-    }
-    
-    // Generate/Load Keys
-    this.keyPair = this.loadOrGenerateKeys();
-    
-    // Initialize My Chain
-    this.chain = new UserChain(userId, this.keyPair);
-    this.loadChain();
-
+    // Core components (data loaded later)
+    this.chain = null;
     this.portfolio = new Portfolio(userId);
-    
-    // Trust Lines
     this.trustLines = new Set();
-    this.loadTrustLines();
-
-    // External Chains
     this.externalChains = new Map();
-    this.loadExternalChains();
+    this.peers = [];
+  }
 
-    // Peer list (simplified)
-    this.peers = []; 
+  // New Async Initializer
+  async initialize() {
+    if (this.initialized) return;
 
-    // Listen for new blocks from the network
+    console.log(`🚀 Initializing node for ${this.userId}...`);
+
+    // 1. Load or Generate Keys
+    this.keyPair = await this.loadOrGenerateKeys();
+
+    // 2. Initialize Chain
+    this.chain = new UserChain(this.userId, this.keyPair);
+    await this.loadChain();
+
+    // 3. Load Trust Lines
+    await this.loadTrustLines();
+
+    // 4. Load External Chains (Network State)
+    await this.loadExternalChains();
+
+    // 5. Listen for updates
     listenForBlocks((block) => this.handleIncomingBlock(block));
+
+    this.initialized = true;
+    console.log(`✅ Node ${this.userId} ready.`);
   }
 
-  handleIncomingBlock(block) {
-    // Basic validation
-    if (!block || !block.type || !block.hash) {
-      console.error('Invalid block received:', block);
-      return;
+  // --- Persistence Methods (Now Async) ---
+
+  async loadOrGenerateKeys() {
+    const keys = await getDocument('keys', this.userId);
+    if (keys) {
+        return keys;
     }
 
-    // Avoid processing own blocks
-    if (block.publicKey === this.keyPair.publicKey) {
-      return;
+    console.log("Generating new keys...");
+    const { publicKey, privateKey } = crypto.generateKeyPairSync('rsa', {
+      modulusLength: 2048,
+      publicKeyEncoding: { type: 'spki', format: 'pem' },
+      privateKeyEncoding: { type: 'pkcs8', format: 'pem' }
+    });
+    
+    const newKeys = { publicKey, privateKey };
+    // In production, NEVER save privateKey to DB directly without encryption!
+    await saveDocument('keys', this.userId, newKeys);
+    return newKeys;
+  }
+
+  async loadChain() {
+    const data = await getDocument('chains', this.userId);
+    if (data && data.chain) {
+        this.chain.chain = data.chain;
+        // Replay state
+        this.chain.state = { balance: 0, totalSupply: 0, transactionCount: 0 };
+        for (let i = 1; i < this.chain.chain.length; i++) {
+            try {
+              this.chain.updateState(this.chain.chain[i]);
+            } catch (e) {
+                console.error(`Error replaying block ${i}:`, e.message);
+            }
+        }
+        console.log(`Loaded chain. Height: ${this.chain.chain.length}`);
     }
-
-    console.log(`Received block of type ${block.type} from the network.`);
-
-    // Add more advanced validation and processing logic here
-    // For example, checking the block's signature and adding it to the chain
   }
 
-  loadOrGenerateKeys() {
-      const keyPath = path.join(this.dataDir, `${this.userId}_keys.json`);
-      if (fs.existsSync(keyPath)) {
-          return JSON.parse(fs.readFileSync(keyPath, 'utf8'));
-      }
-      const { publicKey, privateKey } = crypto.generateKeyPairSync('rsa', {
-        modulusLength: 2048,
-        publicKeyEncoding: { type: 'spki', format: 'pem' },
-        privateKeyEncoding: { type: 'pkcs8', format: 'pem' }
-      });
-      const keys = { publicKey, privateKey };
-      fs.writeFileSync(keyPath, JSON.stringify(keys, null, 2));
-      return keys;
+  async saveChain() {
+    // Save the full chain array
+    await saveDocument('chains', this.userId, { 
+        chain: this.chain.chain,
+        lastUpdated: Date.now()
+    });
   }
 
-  loadChain() {
-      const chainPath = path.join(this.dataDir, `${this.userId}_chain.json`);
-      if (fs.existsSync(chainPath)) {
-          const data = JSON.parse(fs.readFileSync(chainPath, 'utf8'));
-          this.chain.chain = data;
-          
-          this.chain.state = { balance: 0, totalSupply: 0, transactionCount: 0 };
-          for (let i = 1; i < this.chain.chain.length; i++) {
-              try {
-                this.chain.updateState(this.chain.chain[i]);
-              } catch (e) {
-                  console.error(`Error replaying block ${i}:`, e.message);
-              }
-          }
-          console.log(`Loaded chain for ${this.userId}. Height: ${this.chain.chain.length}`);
-      }
+  async loadTrustLines() {
+    const data = await getDocument('trust', this.userId);
+    if (data && data.lines) {
+        this.trustLines = new Set(data.lines);
+    }
   }
 
-  saveChain() {
-      const chainPath = path.join(this.dataDir, `${this.userId}_chain.json`);
-      fs.writeFileSync(chainPath, JSON.stringify(this.chain.chain, null, 2));
-  }
-
-  // --- Trust Lines ---
-
-  loadTrustLines() {
-      const trustPath = path.join(this.dataDir, `${this.userId}_trust.json`);
-      if (fs.existsSync(trustPath)) {
-          const data = JSON.parse(fs.readFileSync(trustPath, 'utf8'));
-          this.trustLines = new Set(data);
-          console.log(`Loaded ${this.trustLines.size} trust lines.`);
-      }
-  }
-
-  saveTrustLines() {
-      const trustPath = path.join(this.dataDir, `${this.userId}_trust.json`);
-      fs.writeFileSync(trustPath, JSON.stringify([...this.trustLines], null, 2));
+  async saveTrustLines() {
+    await saveDocument('trust', this.userId, { 
+        lines: [...this.trustLines] 
+    });
   }
 
   addTrustLine(targetUserId) {
       this.trustLines.add(targetUserId);
-      this.saveTrustLines();
+      this.saveTrustLines().catch(console.error); // Fire and forget save
   }
 
   removeTrustLine(targetUserId) {
       this.trustLines.delete(targetUserId);
-      this.saveTrustLines();
+      this.saveTrustLines().catch(console.error);
   }
 
   isTrusted(userId) {
@@ -127,35 +118,30 @@ class UserNode {
       return this.trustLines.has(userId);
   }
 
-  // --- External Chains Management ---
+  // --- External Chains ---
 
-  loadExternalChains() {
-      const files = fs.readdirSync(this.dataDir);
-      files.forEach(file => {
-          if (file.startsWith('external_') && file.endsWith('_chain.json')) {
-              const remoteUserId = file.replace('external_', '').replace('_chain.json', '');
-              const data = JSON.parse(fs.readFileSync(path.join(this.dataDir, file), 'utf8'));
-              this.externalChains.set(remoteUserId, data);
-          }
-      });
+  async loadExternalChains() {
+      // In Firestore, we might query a 'chains' collection
+      // For now, let's just load active peers if needed or leave empty to fetch on demand
+      // Optimally, we don't load ALL chains, only ones we care about.
+      // Leaving this simple for now.
   }
 
-  saveExternalChain(remoteUserId, chainData) {
-      const filePath = path.join(this.dataDir, `external_${remoteUserId}_chain.json`);
-      fs.writeFileSync(filePath, JSON.stringify(chainData, null, 2));
+  async saveExternalChain(remoteUserId, chainData) {
+      // We don't save other people's chains to our DB record usually
+      // We might cache them locally in memory
       this.externalChains.set(remoteUserId, chainData);
   }
 
-  updateExternalChain(remoteUserId, chainData) {
-      const currentChain = this.externalChains.get(remoteUserId) || [];
-      if (chainData.length > currentChain.length) {
-          this.saveExternalChain(remoteUserId, chainData);
-      }
-  }
+  // --- Actions (Async Updates) ---
 
-  /**
-   * Actions
-   */
+  handleIncomingBlock(block) {
+    if (!block || !block.type || !block.hash) return;
+    if (block.publicKey === this.keyPair.publicKey) return;
+
+    console.log(`Received block ${block.type} from network.`);
+    // Verify and add to externalChains cache...
+  }
 
   signData(data) {
       const sign = crypto.createSign('SHA256');
@@ -164,7 +150,6 @@ class UserNode {
       return sign.sign(this.keyPair.privateKey, 'hex');
   }
 
-  // Verify a generic signature (static helper)
   static verifySignature(data, signature, publicKey) {
       const verify = crypto.createVerify('SHA256');
       verify.update(JSON.stringify(data));
@@ -172,14 +157,54 @@ class UserNode {
       return verify.verify(publicKey, signature, 'hex');
   }
 
+  async mint(amount) {
+      const block = this.chain.mint(amount);
+      await this.saveChain();
+      broadcastBlock(block);
+      return block;
+  }
+
+  async createTransaction(amount, toAddress, message = '') {
+      const block = this.chain.createTransaction(amount, toAddress, message);
+      await this.saveChain();
+      broadcastBlock(block);
+      return block;
+  }
+
+  async sendAsset(issuerId, amount, toAddress, message = '') {
+      if (issuerId === this.userId) {
+          const block = await this.createTransaction(amount, toAddress, message);
+          return { type: 'LOCAL', block };
+      } else {
+          // Remote logic remains similar, but saving request might be needed
+          const request = {
+              from: this.userId,
+              to: toAddress,
+              amount: amount,
+              message: message,
+              timestamp: Date.now()
+          };
+          request.signature = this.signData(request);
+          return { type: 'REMOTE', targetNode: issuerId, request };
+      }
+  }
+
+  async receiveTransaction(fromAddress, amount, senderBlockHash, message = '') {
+      if (!this.isTrusted(fromAddress)) {
+          throw new Error(`Trust Error: You do not have a Trust Line for ${fromAddress}`);
+      }
+      const block = this.chain.receiveTransaction(fromAddress, amount, senderBlockHash, message);
+      await this.saveChain();
+      broadcastBlock(block);
+      return block;
+  }
+
   handleTransferRequest(request) {
       const { from, to, amount, signature, timestamp } = request;
 
-      const senderChain = this.externalChains.get(from);
-      if (senderChain && senderChain.length > 0) {
-          // Verify
-      }
-
+      // 1. Verify Sender (Remote Chain check - simplified)
+      // In a real implementation, we would fetch the sender's chain and verify signatures.
+      
       // 2. Verify Balance
       const currentBalance = this.calculateBalanceForUser(from);
       if (currentBalance < amount) {
@@ -187,16 +212,11 @@ class UserNode {
       }
 
       const block = this.chain.createBlock('CONTRACT', {
-          code: `
-            if (!state.ledger) state.ledger = {};
-            if (!state.ledger['${from}']) state.ledger['${from}'] = 0;
-            if (!state.ledger['${to}']) state.ledger['${to}'] = 0;
-            state.ledger['${from}'] -= ${amount};
-            state.ledger['${to}'] += ${amount};
-          `,
+          code: TransactionFactory.createTransferScript(from, to, amount),
           params: {}
       });
-      this.saveChain();
+      
+      this.saveChain(); // Fire and forget or await if async context allowed
       broadcastBlock(block);
       return { success: true, txId: block.hash };
   }
@@ -207,62 +227,6 @@ class UserNode {
       }
       return 0;
   }
-  
-  getBalanceForUser(userId) {
-      return this.calculateBalanceForUser(userId);
-  }
-
-  mint(amount) {
-      const block = this.chain.mint(amount);
-      this.saveChain();
-      broadcastBlock(block);
-      return block;
-  }
-
-  createTransaction(amount, toAddress, message = '') {
-      const block = this.chain.createTransaction(amount, toAddress, message);
-      this.saveChain();
-      broadcastBlock(block);
-      return block;
-  }
-
-  /**
-   * Sends an asset.
-   */
-  sendAsset(issuerId, amount, toAddress, message = '') {
-      if (issuerId === this.userId) {
-          // Native Send
-          const block = this.createTransaction(amount, toAddress, message);
-          return { type: 'LOCAL', block };
-      } else {
-          // Third-Party Transfer
-          const request = {
-              from: this.userId,
-              to: toAddress,
-              amount: amount,
-              message: message, // Include message in request
-              timestamp: Date.now()
-          };
-          
-          request.signature = this.signData(request);
-          
-          return { 
-              type: 'REMOTE', 
-              targetNode: issuerId, 
-              request: request 
-          };
-      }
-  }
-
-  receiveTransaction(fromAddress, amount, senderBlockHash, message = '') {
-      if (!this.isTrusted(fromAddress)) {
-          throw new Error(`Trust Error: You do not have a Trust Line for ${fromAddress}`);
-      }
-      const block = this.chain.receiveTransaction(fromAddress, amount, senderBlockHash, message);
-      this.saveChain();
-      broadcastBlock(block);
-      return block;
-  }
 }
 
-module.exports = UserNode;
+export default UserNode;

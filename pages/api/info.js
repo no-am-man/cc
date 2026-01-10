@@ -6,7 +6,7 @@ import Oracle from '../../src/Oracle';
 export default async function handler(req, res) {
   const session = await getSession({ req });
   const userId = session?.user?.email || process.env.NODE_ID || 'guest_node';
-  const node = getNodeForUser(userId);
+  const node = await getNodeForUser(userId);
 
   res.status(200).json({
     nodeId: node.userId,

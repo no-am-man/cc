@@ -1,13 +1,9 @@
-
 import UserNode from './UserNode';
 
 const activeNodes = new Map();
 
-// In a serverless environment, this Map might be reset between invocations.
-// For a production app, this state should be moved to a persistent store like Redis or a database.
-console.log('Initializing Node Manager...');
-
-function getNodeForUser(userId) {
+// Helper to get or create a node asynchronously
+async function getNodeForUser(userId) {
     if (!userId) return null;
     const normalizedId = userId.toLowerCase();
 
@@ -17,8 +13,11 @@ function getNodeForUser(userId) {
 
     console.log(`✨ Spawning Re-Public Node for: ${normalizedId}`);
     const node = new UserNode(normalizedId);
+    
+    // AWAIT the initialization (loads keys/chain from Firestore)
+    await node.initialize();
+    
     activeNodes.set(normalizedId, node);
-
     return node;
 }
 

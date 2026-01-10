@@ -3,15 +3,15 @@
 <html lang="en">
 
 <head>
-    <title>Code coverage report for core/ContractRunner.js</title>
+    <title>Code coverage report for core/logic/BlockProcessor.js</title>
     <meta charset="utf-8" />
-    <link rel="stylesheet" href="../prettify.css" />
-    <link rel="stylesheet" href="../base.css" />
-    <link rel="shortcut icon" type="image/x-icon" href="../favicon.png" />
+    <link rel="stylesheet" href="../../prettify.css" />
+    <link rel="stylesheet" href="../../base.css" />
+    <link rel="shortcut icon" type="image/x-icon" href="../../favicon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <style type='text/css'>
         .coverage-summary .sorter {
-            background-image: url(../sort-arrow-sprite.png);
+            background-image: url(../../sort-arrow-sprite.png);
         }
     </style>
 </head>
@@ -19,34 +19,34 @@
 <body>
 <div class='wrapper'>
     <div class='pad1'>
-        <h1><a href="../index.html">All files</a> / <a href="index.html">core</a> ContractRunner.js</h1>
+        <h1><a href="../../index.html">All files</a> / <a href="index.html">core/logic</a> BlockProcessor.js</h1>
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">100% </span>
+                <span class="strong">92% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>13/13</span>
+                <span class='fraction'>23/25</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">100% </span>
+                <span class="strong">71.42% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>0/0</span>
-            </div>
-        
-            
-            <div class='fl pad1y space-right2'>
-                <span class="strong">66.66% </span>
-                <span class="quiet">Functions</span>
-                <span class='fraction'>4/6</span>
+                <span class='fraction'>5/7</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
                 <span class="strong">100% </span>
+                <span class="quiet">Functions</span>
+                <span class='fraction'>6/6</span>
+            </div>
+        
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">91.66% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>13/13</span>
+                <span class='fraction'>22/24</span>
             </div>
         
             
@@ -128,27 +128,23 @@
 <a name='L63'></a><a href='#L63'>63</a>
 <a name='L64'></a><a href='#L64'>64</a>
 <a name='L65'></a><a href='#L65'>65</a>
-<a name='L66'></a><a href='#L66'>66</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">43x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L66'></a><a href='#L66'>66</a>
+<a name='L67'></a><a href='#L67'>67</a>
+<a name='L68'></a><a href='#L68'>68</a>
+<a name='L69'></a><a href='#L69'>69</a>
+<a name='L70'></a><a href='#L70'>70</a>
+<a name='L71'></a><a href='#L71'>71</a>
+<a name='L72'></a><a href='#L72'>72</a>
+<a name='L73'></a><a href='#L73'>73</a>
+<a name='L74'></a><a href='#L74'>74</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">8x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">8x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">37x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -160,104 +156,132 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">19x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">19x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">8x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">8x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">8x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">5x</span>
+<span class="cline-any cline-yes">12x</span>
+<span class="cline-any cline-yes">10x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">3x</span>
 <span class="cline-any cline-yes">3x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">17x</span>
+<span class="cline-any cline-yes">17x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">12x</span>
+<span class="cline-any cline-yes">10x</span>
+<span class="cline-any cline-yes">10x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">const vm = require('vm');
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">const ContractRunner = require('../ContractRunner');
 &nbsp;
-class ContractRunner {
-  constructor() {
-    this.DEFAULT_TIMEOUT = 500; // ms
-  }
-&nbsp;
-  /**
-   * Executes a smart contract (JS code) in a sandboxed environment.
-   * @param {string} contractCode - The JavaScript code to execute.
-   * @param {object} currentState - The current state (e.g., balance).
-   * @param {object} transactionData - Data from the transaction (amount, sender, etc.).
-   * @param {number} blockTimestamp - Timestamp to be used instead of Date.now().
-   * @returns {object} - The modified state.
-   */
-  execute(contractCode, currentState, transactionData, blockTimestamp) {
-    // Deep copy state to prevent reference mutation issues outside sandbox
-    const state = JSON.parse(JSON.stringify(currentState));
-    
-    // Create the sandbox context
-    const sandbox = {
-      state: state,
-      transaction: transactionData,
-      // Deterministic helpers
-      timestamp: blockTimestamp,
-      // Block non-deterministic or dangerous globals
-      console: {
-          log: <span class="fstat-no" title="function not covered" >() =&gt; {}</span>, // No-op or controlled logging
-          error: <span class="fstat-no" title="function not covered" >() =&gt; {}</span>
-      },
-      // Explicitly block standard dangerous objects if they leak through (though vm usually handles this)
-      process: undefined,
-      require: undefined,
-      setTimeout: undefined,
-      setInterval: undefined,
-      setImmediate: undefined,
-      Date: {
-          now: () =&gt; blockTimestamp,
-          parse: Date.parse,
-          UTC: Date.UTC
-      },
-      Math: {
-          ...Math,
-          random: () =&gt; { throw new Error("Math.random is not allowed in contracts"); }
-      }
-    };
-&nbsp;
-    const context = vm.createContext(sandbox);
-&nbsp;
-    try {
-      // Execute the code
-      vm.runInContext(contractCode, context, {
-        timeout: this.DEFAULT_TIMEOUT,
-        displayErrors: true
-      });
-&nbsp;
-      return sandbox.state;
-    } catch (error) {
-      console.error("Smart Contract Execution Failed:", error.message);
-      throw error; // Propagate error so block validation fails
+/**
+ * Handles the application of blocks to the state.
+ * Implements the Strategy pattern for different block types.
+ */
+class BlockProcessor {
+    constructor() {
+        this.runner = new ContractRunner();
     }
-  }
+&nbsp;
+    /**
+     * Process a block and return the new state.
+     * @param {object} block - The block to process.
+     * @param {object} currentState - The current state object.
+     * @returns {object} - The new state.
+     */
+    process(block, currentState) {
+        // Create a deep copy to avoid mutating the passed state directly
+        // (Though the caller usually expects a new object or mutation is handled carefully)
+        const newState = { ...currentState };
+&nbsp;
+        switch (block.type) {
+            case 'MINT':
+                this.processMint(block, newState);
+                break;
+            case 'SEND':
+                this.processSend(block, newState);
+                break;
+            case 'RECEIVE':
+                this.processReceive(block, newState);
+                break;
+            case 'CONTRACT':
+                this.processContract(block, newState);
+                break;
+<span class="branch-4 cbranch-no" title="branch not covered" >            case 'GENESIS':</span>
+                // Genesis block usually doesn't change balance state unless specified
+<span class="cstat-no" title="statement not covered" >                break;</span>
+<span class="branch-5 cbranch-no" title="branch not covered" >            default:</span>
+<span class="cstat-no" title="statement not covered" >                console.warn(`Unknown block type: ${block.type}`);</span>
+        }
+&nbsp;
+        newState.transactionCount++;
+        return newState;
+    }
+&nbsp;
+    processMint(block, state) {
+        if (block.data.amount &lt;= 0) throw new Error("Mint amount must be positive");
+        state.balance += block.data.amount;
+        state.totalSupply += block.data.amount;
+    }
+&nbsp;
+    processSend(block, state) {
+        state.balance -= block.data.amount;
+    }
+&nbsp;
+    processReceive(block, state) {
+        state.balance += block.data.amount;
+    }
+&nbsp;
+    processContract(block, state) {
+        const resultState = this.runner.execute(
+            block.data.code,
+            state,
+            block.data.params,
+            block.timestamp
+        );
+        Object.assign(state, resultState);
+    }
 }
 &nbsp;
-module.exports = ContractRunner;
+module.exports = BlockProcessor;
+&nbsp;
 &nbsp;</pre></td></tr></table></pre>
 
                 <div class='push'></div><!-- for sticky footer -->
@@ -267,14 +291,14 @@ module.exports = ContractRunner;
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
                 at 2026-01-10T08:47:53.692Z
             </div>
-        <script src="../prettify.js"></script>
+        <script src="../../prettify.js"></script>
         <script>
             window.onload = function () {
                 prettyPrint();
             };
         </script>
-        <script src="../sorter.js"></script>
-        <script src="../block-navigation.js"></script>
+        <script src="../../sorter.js"></script>
+        <script src="../../block-navigation.js"></script>
     </body>
 </html>
     

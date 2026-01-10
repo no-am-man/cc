@@ -1,0 +1,27 @@
+runConfig:
+  environmentVariables:
+    - variable: NEXT_PUBLIC_FIREBASE_API_KEY
+      required: true
+    - variable: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
+      required: true
+    - variable: NEXT_PUBLIC_FIREBASE_PROJECT_ID
+      required: true
+    - variable: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+      required: true
+    - variable: NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
+      required: true
+    - variable: NEXT_PUBLIC_FIREBASE_APP_ID
+      required: true
+    - variable: NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
+      required: false
+    - variable: NEXTAUTH_URL
+      required: true
+    - variable: NEXTAUTH_SECRET
+      required: true
+    - variable: GOOGLE_CLIENT_ID
+      required: true
+    - variable: GOOGLE_CLIENT_SECRET
+      required: true
+    - variable: METAL_PRICE_API_KEY
+      required: true
+
