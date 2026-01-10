@@ -1,102 +1,133 @@
+# Re-Public Protocol (V2)
 
-# CC Multichain Node on Next.js
+**Re-Public** is a decentralized "Personal Economy" protocol where every user becomes their own sovereign bank.
 
-Version: 2.0.0
+Built on a **Multi-Chain (Block Lattice)** architecture, each user controls their own private blockchain, mints their own currency, and interacts with others via a peer-to-peer federation.
 
-This project is a multichain node built with Next.js and deployed on Firebase App Hosting. It provides a secure and scalable platform for interacting with multiple blockchains.
+> "Every individual is a Republic."
 
-## Features
+---
 
-*   **Next.js:** A popular React framework for building server-rendered and statically generated web applications.
-*   **Firebase App Hosting:** A fully managed, serverless platform for deploying modern web applications.
-*   **Next-Auth:** A complete open-source authentication solution for Next.js applications.
-*   **Modular Firebase SDK:** A modern, tree-shakable SDK for interacting with Firebase services.
+## 🌟 Key Features
 
-## Getting Started
+*   **Sovereign Identity**: Your Google Account (or future DID) creates a unique Node ID.
+*   **Personal Blockchain**: You hold the keys. You write the blocks. No central ledger.
+*   **Mutual Credit**: Issue your own currency. Balances can go negative (debt), backed by your reputation.
+*   **Silver Standard**: All currencies are denominated in **CC** (Credit Commons), loosely pegged to 1g of Silver.
+*   **P2P Federation**: Nodes communicate via Firestore (Serverless Bus) to exchange assets and synchronize chains.
+*   **Smart Contracts**: Programmable money with secure, sandboxed JavaScript contracts.
 
-1.  **Clone the repository:**
+---
 
-    ```bash
-    git clone https://github.com/your-username/your-repository.git
-    ```
+## 🛠 Tech Stack
 
-2.  **Install the dependencies:**
+*   **Framework**: [Next.js 16](https://nextjs.org/) (React 19)
+*   **Language**: Node.js / JavaScript
+*   **Database**: Google Cloud Firestore (NoSQL Persistence)
+*   **Auth**: NextAuth.js (Google OAuth 2.0)
+*   **Deployment**: Firebase App Hosting (Serverless)
 
-    ```bash
-    npm install
-    ```
+---
 
-3.  **Set up your environment variables:**
+## 🚀 Getting Started
 
-    Create a `.env.local` file in the root of your project and add the following:
+### 1. Prerequisites
+*   Node.js 18+ installed.
+*   A **Firebase Project** (Free Tier is fine).
+*   A **Google Cloud Console** project (for OAuth).
 
-    ```
-    # Firebase
-    NEXT_PUBLIC_FIREBASE_API_KEY=YOUR_API_KEY
-    NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=YOUR_AUTH_DOMAIN
-    NEXT_PUBLIC_FIREBASE_PROJECT_ID=YOUR_PROJECT_ID
-    NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=YOUR_STORAGE_BUCKET
-    NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=YOUR_MESSAGING_SENDER_ID
-    NEXT_PUBLIC_FIREBASE_APP_ID=YOUR_APP_ID
-    NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID=YOUR_MEASUREMENT_ID
+### 2. Installation
 
-    # Next-Auth
-    NEXTAUTH_URL=http://localhost:3000
-    NEXTAUTH_SECRET=YOUR_SECRET
+```bash
+git clone https://github.com/your-username/cc-republic.git
+cd cc-republic
+npm install
+```
 
-    # Google OAuth
-    GOOGLE_CLIENT_ID=YOUR_GOOGLE_CLIENT_ID
-    GOOGLE_CLIENT_SECRET=YOUR_GOOGLE_CLIENT_SECRET
+### 3. Environment Setup
 
-    # Oracle
-    METAL_PRICE_API_KEY=YOUR_METAL_PRICE_API_KEY
-    ```
+Create a `.env.local` file in the root directory:
 
-4.  **Run the development server:**
+```env
+# --- Firebase (from Project Settings) ---
+NEXT_PUBLIC_FIREBASE_API_KEY=your_api_key
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=your_project_id
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your_project.appspot.com
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
+NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
 
-    ```bash
-    npm run dev
-    ```
+# --- NextAuth (Authentication) ---
+NEXTAUTH_URL=http://localhost:3000
+NEXTAUTH_SECRET=run_openssl_rand_base64_32_to_generate
 
-## Deployment
+# --- Google OAuth (from GCP Console) ---
+GOOGLE_CLIENT_ID=your_client_id
+GOOGLE_CLIENT_SECRET=your_client_secret
 
-This project is configured for **Firebase App Hosting**.
+# --- Oracle (Optional) ---
+METAL_PRICE_API_KEY=your_key_from_metalpriceapi.com
+```
 
-### Prerequisites
-1.  A Firebase Project.
-2.  A GitHub repository with this code.
+### 4. Database Rules
+Go to your **Firebase Console -> Firestore Database -> Rules** and set them for development:
 
-### Step-by-Step Deployment
+```javascript
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if true; // ⚠️ Dev Mode Only
+    }
+  }
+}
+```
 
-1.  **Push to GitHub**: Ensure your latest changes are pushed to your GitHub repository.
-2.  **Firebase Console**: Go to the [Firebase Console](https://console.firebase.google.com/).
-3.  **App Hosting**: Navigate to **Build > App Hosting**.
-4.  **Get Started**: Click "Get Started" and follow the prompts to connect your GitHub repository.
-5.  **Configuration**:
-    *   **Root Directory**: Leave as `/` (default).
-    *   **Live Branch**: Select `main` (or your preferred branch).
-6.  **Environment Variables**:
-    You MUST configure the following environment variables in the Firebase App Hosting dashboard (under "Settings" or during setup). Do not commit these to GitHub.
+### 5. Run Locally
 
-    *   `NEXT_PUBLIC_FIREBASE_API_KEY`
-    *   `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`
-    *   `NEXT_PUBLIC_FIREBASE_PROJECT_ID`
-    *   `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET`
-    *   `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID`
-    *   `NEXT_PUBLIC_FIREBASE_APP_ID`
-    *   `NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID` (Optional)
-    *   `NEXTAUTH_URL` (Your deployed URL, e.g., `https://your-app-id.web.app`)
-    *   `NEXTAUTH_SECRET` (Generate a random string: `openssl rand -base64 32`)
-    *   `GOOGLE_CLIENT_ID` (From Google Cloud Console)
-    *   `GOOGLE_CLIENT_SECRET` (From Google Cloud Console)
-    *   `METAL_PRICE_API_KEY` (From MetalPriceAPI)
+```bash
+npm run dev
+```
+Visit `http://localhost:3000`. Login, Mint, and Transact!
 
-7.  **Deploy**: Firebase will automatically build and deploy your application. Future pushes to the `main` branch will trigger automatic rollouts.
+---
 
-### Database Rules
-Since this app uses Firestore for the blockchain, ensure your **Firestore Security Rules** are set up correctly to allow:
-*   Users to read/write their own chains.
-*   Users to read (but not write) public chains.
-*   Users to read/write their own private keys (ensure this is strictly protected!).
+## 🌐 Deployment (Firebase App Hosting)
 
-**Note**: The app is configured to use Firestore for persistence, making it fully compatible with serverless environments.
+This project is optimized for **Firebase App Hosting**, a next-gen serverless platform for Next.js.
+
+1.  Push your code to **GitHub**.
+2.  Go to **Firebase Console -> App Hosting**.
+3.  Click **"Get Started"** and connect your GitHub repo.
+4.  **Important**: In the App Hosting settings, add **ALL** the environment variables from your `.env.local` (except `NEXTAUTH_URL` which Firebase handles automatically, though you might need to set it to your deployed domain).
+
+---
+
+## 📚 Architecture
+
+### The "Node" Concept
+In Re-Public, the "Server" is stateless. When you log in, a `UserNode` is spawned in memory. It hydrates its state (Blockchain, Keys, Portfolio) from Firestore.
+
+### The "Chain"
+*   **MINT**: Create new coins (increases your supply).
+*   **SEND**: Transfer coins to another user.
+*   **RECEIVE**: Accept coins (and debt) from others.
+*   **CONTRACT**: Execute arbitrary logic.
+
+### Trust Lines
+You only receive money/messages from people you **Trust**. This prevents spam and creates a "Web of Trust" topology.
+
+---
+
+## 🧪 Testing
+
+We use **Jest** for comprehensive unit testing.
+
+```bash
+npm test          # Run all tests
+npm test -- --coverage # Check code coverage
+```
+
+---
+
+**License**: MIT
