@@ -17,6 +17,11 @@ export default function Home() {
 
   const api = async (path, options) => {
     const res = await fetch(`/api/${path}`, options);
+    if (!res.ok) {
+        const text = await res.text();
+        console.error(`API Error ${path}:`, text);
+        throw new Error(`API Error: ${res.status} ${res.statusText}`);
+    }
     return res.json();
   };
 

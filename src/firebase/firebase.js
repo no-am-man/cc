@@ -1,4 +1,3 @@
-
 import { initializeApp, getApps } from 'firebase/app';
 
 const firebaseConfig = {
@@ -11,10 +10,24 @@ const firebaseConfig = {
   measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
 };
 
+// Diagnostic Log (Server-side & Client-side)
+if (!firebaseConfig.apiKey) {
+    console.error("🔥 Firebase Config Error: apiKey is missing!");
+    console.error("Env Vars:", {
+        apiKey: !!process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+        projectId: !!process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+    });
+}
+
 let app;
 
 if (!getApps().length) {
-  app = initializeApp(firebaseConfig);
+  try {
+    app = initializeApp(firebaseConfig);
+    console.log("✅ Firebase Initialized");
+  } catch (e) {
+    console.error("❌ Firebase Initialization Failed:", e.message);
+  }
 } else {
   app = getApps()[0];
 }
