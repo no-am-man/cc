@@ -1,7 +1,27 @@
-// Optional: configure or set up a testing framework before each test.
-// If you delete this file, remove `setupFilesAfterEnv` from `jest.config.js`
+import '@testing-library/jest-dom';
 
-// Used for __tests__/testing-library.js
-// Learn more: https://github.com/testing-library/jest-dom
-// import '@testing-library/jest-dom/extend-expect'
+// Mock TextEncoder/TextDecoder for Node.js environment in JSDOM
+import { TextEncoder, TextDecoder } from 'util';
+global.TextEncoder = TextEncoder;
+global.TextDecoder = TextDecoder;
 
+// Mock Firebase
+jest.mock('firebase/firestore', () => ({
+  getFirestore: jest.fn(),
+  collection: jest.fn(),
+  doc: jest.fn(),
+  getDoc: jest.fn(),
+  setDoc: jest.fn(),
+  addDoc: jest.fn(),
+  getDocs: jest.fn(),
+  onSnapshot: jest.fn((query, callback) => {
+    // Return a dummy unsubscribe function
+    return () => {};
+  }),
+}));
+
+jest.mock('firebase/app', () => ({
+  initializeApp: jest.fn(),
+  getApps: jest.fn(() => []),
+  getApp: jest.fn(),
+}));

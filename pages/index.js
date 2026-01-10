@@ -25,8 +25,16 @@ export default function Home() {
     return res.json();
   };
 
+  const [lastActionTime, setLastActionTime] = useState(0);
+
   const fetchData = async () => {
     if (!session) return;
+    
+    // Skip fetch if we just performed an action (to allow Firestore to catch up)
+    if (Date.now() - lastActionTime < 5000) {
+        return;
+    }
+
     try {
         const [infoData, portfolioData, chainData] = await Promise.all([
         api('info'),
@@ -49,12 +57,32 @@ export default function Home() {
   }, [session]);
 
   const handleMint = async () => {
-    await api('mint', {
+    const data = await api('mint', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ amount: Number(mintAmount) }),
     });
-    fetchData();
+    
+    // Optimistic / Immediate Update from Response
+    if (data.success && data.block) {
+        setLastActionTime(Date.now()); // Pause polling
+        setChain(prev => [...prev, data.block]);
+        
+        setInfo(prev => {
+            if (!prev) return prev;
+            const currentStats = prev.inflationStats || { currentBalance: 0, totalMinted: 0 };
+            return {
+                ...prev,
+                inflationStats: {
+                    ...currentStats,
+                    currentBalance: currentStats.currentBalance + Number(mintAmount),
+                    totalMinted: currentStats.totalMinted + Number(mintAmount)
+                }
+            };
+        });
+        // We avoid calling fetchData() immediately to prevent overwriting with stale data
+        // The polling interval will catch up eventually
+    }
   };
 
   const handleSend = async () => {
@@ -67,7 +95,8 @@ export default function Home() {
         message: sendMessage,
       }),
     });
-    fetchData();
+    setLastActionTime(Date.now()); // Pause polling
+    // fetchData(); // Let the poll pick it up later or implement optimistic update here too
   };
 
   const handleTrust = async (action) => {
@@ -76,7 +105,8 @@ export default function Home() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action, userId: trustUser }),
     });
-    fetchData();
+    setLastActionTime(Date.now()); // Pause polling
+    // fetchData();
   };
 
   return (
@@ -133,8 +163,9 @@ export default function Home() {
             <div className="actions-row">
                 <Card title="Mint Currency">
                     <div className="form-group">
-                        <label>Amount (CC)</label>
+                        <label htmlFor="mintAmount">Amount (CC)</label>
                         <input
+                            id="mintAmount"
                             type="number"
                             value={mintAmount}
                             onChange={(e) => setMintAmount(e.target.value)}

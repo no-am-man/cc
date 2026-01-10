@@ -8,7 +8,9 @@ import app from './firebase';
 const broadcastBlock = async (block) => {
   const db = getFirestore(app);
   try {
-    const docRef = await addDoc(collection(db, "blocks"), block);
+    // Firestore cannot accept custom classes, so we convert to a plain object
+    const plainBlock = Object.assign({}, block);
+    const docRef = await addDoc(collection(db, "blocks"), plainBlock);
     console.log("Block broadcasted with ID: ", docRef.id);
   } catch (e) {
     console.error("Error broadcasting block: ", e);
@@ -25,8 +27,10 @@ const listenForBlocks = (callback) => {
   const q = collection(db, "blocks");
 
   const unsubscribe = onSnapshot(q, (querySnapshot) => {
-    querySnapshot.forEach((doc) => {
-      callback(doc.data());
+    querySnapshot.docChanges().forEach((change) => {
+      if (change.type === "added") {
+        callback(change.doc.data());
+      }
     });
   });
 

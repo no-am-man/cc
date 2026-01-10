@@ -84,8 +84,11 @@ class UserNode {
 
   async saveChain() {
     // Save the full chain array
+    // Firestore cannot save custom classes (Block), so we must convert to plain objects
+    const plainChain = this.chain.chain.map(block => Object.assign({}, block));
+    
     await saveDocument('chains', this.userId, { 
-        chain: this.chain.chain,
+        chain: plainChain,
         lastUpdated: Date.now()
     });
   }

@@ -1,15 +1,8 @@
-// Mock Firebase
-jest.mock('firebase/firestore', () => ({
-    getFirestore: jest.fn(),
-    collection: jest.fn(),
-    addDoc: jest.fn(),
-    onSnapshot: jest.fn(),
-}));
-
-jest.mock('../../src/firebase/firebase', () => ({}));
-
+// Mock Firebase - using global mock but refining implementation for tests
 const { addDoc, onSnapshot } = require('firebase/firestore');
 const { broadcastBlock, listenForBlocks } = require('../../src/firebase/p2p');
+
+jest.mock('../../src/firebase/firebase', () => ({}));
 
 describe('P2P Adapter', () => {
     beforeEach(() => {
@@ -43,9 +36,14 @@ describe('P2P Adapter', () => {
     test('listenForBlocks callback should be triggered on updates', () => {
         // Mock onSnapshot implementation to trigger callback immediately
         onSnapshot.mockImplementation((query, cb) => {
-            const mockSnapshot = [
-                { data: () => ({ hash: '123' }) }
-            ];
+            const mockSnapshot = {
+                docChanges: () => [
+                    { 
+                        type: 'added', 
+                        doc: { data: () => ({ hash: '123' }) } 
+                    }
+                ]
+            };
             cb(mockSnapshot);
             return jest.fn();
         });
@@ -56,4 +54,3 @@ describe('P2P Adapter', () => {
         expect(callback).toHaveBeenCalledWith({ hash: '123' });
     });
 });
-
