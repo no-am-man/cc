@@ -6,13 +6,13 @@ import { broadcastBlock, listenForBlocks } from '../firebase/p2p';
 import { saveDocument, getDocument, getCollectionDocs } from '../firebase/storage';
 
 class UserNode {
-  constructor(userId) {
-    this.userId = userId;
+    constructor(userId) {
+        this.userId = userId;
     this.initialized = false;
     
     // Core components (data loaded later)
     this.chain = null;
-    this.portfolio = new Portfolio(userId);
+        this.portfolio = new Portfolio(userId);
     this.trustLines = new Set();
     this.externalChains = new Map();
     this.peers = [];
@@ -65,12 +65,23 @@ class UserNode {
     return newKeys;
   }
 
-  async loadChain() {
+    // Helper to sync portfolio with chain state
+    syncPortfolio() {
+        if (this.chain && this.chain.state && this.chain.state.assets) {
+            for (const [issuer, amount] of Object.entries(this.chain.state.assets)) {
+                this.portfolio.updateBalance(issuer, amount);
+            }
+        }
+    }
+
+    async loadChain() {
+    console.log(`🔍 Attempting to load chain for ${this.userId} from Firestore...`);
     const data = await getDocument('chains', this.userId);
+    
     if (data && data.chain) {
         this.chain.chain = data.chain;
         // Replay state
-        this.chain.state = { balance: 0, totalSupply: 0, transactionCount: 0 };
+        this.chain.state = { balance: 0, totalSupply: 0, transactionCount: 0, assets: {} };
         for (let i = 1; i < this.chain.chain.length; i++) {
             try {
               this.chain.updateState(this.chain.chain[i]);
@@ -78,15 +89,23 @@ class UserNode {
                 console.error(`Error replaying block ${i}:`, e.message);
             }
         }
-        console.log(`Loaded chain. Height: ${this.chain.chain.length}`);
+        
+        // Sync Portfolio with Chain State
+        this.syncPortfolio();
+
+        console.log(`✅ Loaded chain for ${this.userId}. Height: ${this.chain.chain.length}`);
+    } else {
+        console.warn(`⚠️ No chain found for ${this.userId}. Using Genesis block.`);
     }
   }
 
   async saveChain() {
     // Save the full chain array
-    // Firestore cannot save custom classes (Block), so we must convert to plain objects
-    const plainChain = this.chain.chain.map(block => Object.assign({}, block));
+    // Serialize to pure JSON to remove any class methods or undefined fields
+    const plainChain = JSON.parse(JSON.stringify(this.chain.chain));
     
+    console.log(`💾 SAVING CHAIN for '${this.userId}' | Blocks: ${plainChain.length}`);
+
     await saveDocument('chains', this.userId, { 
         chain: plainChain,
         lastUpdated: Date.now()
@@ -138,12 +157,39 @@ class UserNode {
 
   // --- Actions (Async Updates) ---
 
-  handleIncomingBlock(block) {
+  async handleIncomingBlock(block) {
     if (!block || !block.type || !block.hash) return;
+    // Ignore my own blocks
     if (block.publicKey === this.keyPair.publicKey) return;
 
-    console.log(`Received block ${block.type} from network.`);
-    // Verify and add to externalChains cache...
+    console.log(`Received block ${block.type} from network (Hash: ${block.hash.substring(0, 8)}...)`);
+
+    // 1. Automatic Receipt of Funds
+    // If someone sent money TO me, I should automatically receive it if I trust them.
+    if (block.type === 'SEND' && block.data && block.data.toAddress === this.userId) {
+        const fromAddress = block.data.fromAddress;
+        
+        console.log(`💸 Incoming payment detected from ${fromAddress}!`);
+
+        if (this.isTrusted(fromAddress)) {
+            try {
+                // Check if we already processed this (idempotency)
+                // In a real system we'd check our chain history for this 'senderBlockHash'
+                
+                console.log(`✅ Trusted sender. Auto-receiving ${block.data.amount} CC...`);
+                await this.receiveTransaction(fromAddress, block.data.amount, block.hash, "Auto-received");
+                console.log(`💰 Payment accepted and recorded.`);
+            } catch (e) {
+                console.error("Failed to auto-receive transaction:", e);
+            }
+        } else {
+            console.warn(`⚠️ Payment ignored: ${fromAddress} is not in trust lines.`);
+        }
+    }
+
+    // 2. Network State Update
+    // In a full node, we would verify and add this block to our cache of external chains
+    // this.saveExternalChain(block.data.fromAddress, block);
   }
 
   signData(data) {
@@ -162,13 +208,15 @@ class UserNode {
 
   async mint(amount) {
       const block = this.chain.mint(amount);
+      this.syncPortfolio();
       await this.saveChain();
       broadcastBlock(block);
-      return block;
-  }
+        return block;
+    }
 
   async createTransaction(amount, toAddress, message = '') {
       const block = this.chain.createTransaction(amount, toAddress, message);
+      this.syncPortfolio();
       await this.saveChain();
       broadcastBlock(block);
       return block;
@@ -197,6 +245,7 @@ class UserNode {
           throw new Error(`Trust Error: You do not have a Trust Line for ${fromAddress}`);
       }
       const block = this.chain.receiveTransaction(fromAddress, amount, senderBlockHash, message);
+      this.syncPortfolio();
       await this.saveChain();
       broadcastBlock(block);
       return block;

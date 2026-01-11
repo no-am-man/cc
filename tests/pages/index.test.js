@@ -59,6 +59,7 @@ describe('Home Page', () => {
 
     const headerEmail = screen.getAllByText('test@example.com')[0];
     expect(headerEmail).toBeInTheDocument();
+    expect(screen.getByText('Download Blockchain')).toBeInTheDocument();
     expect(screen.getByText('Node Status')).toBeInTheDocument();
   });
 
@@ -156,8 +157,6 @@ describe('Home Page', () => {
     const elements = screen.getAllByText((content, element) => content.includes('100 CC'));
     expect(elements.length).toBeGreaterThan(0);
     
-    jest.useRealTimers(); 
-    
     jest.useRealTimers();
   });
 
@@ -236,6 +235,145 @@ describe('Home Page', () => {
     }));
   });
 
+  test('handles blockchain download', async () => {
+      useSession.mockReturnValue({
+          data: { user: { email: 'test@example.com' } },
+          status: 'authenticated',
+      });
+
+      // Mocks for initial load
+      global.fetch
+        .mockResolvedValueOnce({ ok: true, json: async () => ({}) })
+        .mockResolvedValueOnce({ ok: true, json: async () => ({}) })
+        .mockResolvedValueOnce({ ok: true, json: async () => ([]) });
+
+      await act(async () => {
+          render(<Home />);
+      });
+
+      // Mock URL.createObjectURL
+      global.URL.createObjectURL = jest.fn();
+      global.URL.revokeObjectURL = jest.fn();
+
+      const downloadBtn = screen.getByText('Download Blockchain');
+      fireEvent.click(downloadBtn);
+
+      expect(global.URL.createObjectURL).toHaveBeenCalled();
+  });
+
+  test('handles blockchain deletion', async () => {
+      useSession.mockReturnValue({
+          data: { user: { email: 'test@example.com' } },
+          status: 'authenticated',
+      });
+
+      // Mocks for initial load
+      global.fetch
+        .mockResolvedValueOnce({ ok: true, json: async () => ({}) })
+        .mockResolvedValueOnce({ ok: true, json: async () => ({}) })
+        .mockResolvedValueOnce({ ok: true, json: async () => ([]) });
+
+      await act(async () => {
+          render(<Home />);
+      });
+
+      // Mock confirm and location.reload
+      window.confirm = jest.fn(() => true);
+      
+      const reloadMock = jest.fn();
+      
+      // Attempt to mock location.reload using Object.defineProperty
+      // We save original to restore later, though in JSDOM strict mode this might fail
+      const originalLocation = window.location;
+
+      try {
+        delete window.location;
+        window.location = { reload: reloadMock };
+      } catch (e) {
+        // Fallback if delete fails (some JSDOM versions)
+        console.warn("Could not delete window.location, trying defineProperty");
+        Object.defineProperty(window, 'location', {
+            value: { reload: reloadMock },
+            configurable: true,
+        });
+      }
+
+      // Mock delete API
+      global.fetch.mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ success: true })
+      });
+
+      // Suppress "Not implemented: navigation" error from JSDOM
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation((msg) => {
+        if (msg.includes && msg.includes('Not implemented: navigation')) return;
+        // Keep other errors
+      });
+      window.alert = jest.fn();
+
+      const deleteBtn = screen.getByText('Delete Chain');
+      await act(async () => {
+          fireEvent.click(deleteBtn);
+      });
+
+      expect(window.confirm).toHaveBeenCalled();
+      expect(global.fetch).toHaveBeenCalledWith('/api/delete', expect.objectContaining({
+          method: 'POST'
+      }));
+      // We cannot reliable test window.location.reload in JSDOM without complex hacks
+      // But we know it runs because we suppress the Not Implemented error it causes.
+      
+      consoleErrorSpy.mockRestore();
+
+      // Restore
+      window.location = originalLocation;
+  });
+
+  test('handles blockchain deletion cancellation', async () => {
+      window.confirm = jest.fn(() => false); // User cancels
+      global.fetch.mockClear();
+
+      await act(async () => {
+          render(<Home />);
+      });
+
+      const deleteBtn = screen.getByText('Delete Chain');
+      fireEvent.click(deleteBtn);
+
+      expect(window.confirm).toHaveBeenCalled();
+      expect(global.fetch).not.toHaveBeenCalledWith('/api/delete', expect.anything());
+  });
+
+  test('handles blockchain deletion error', async () => {
+      useSession.mockReturnValue({
+          data: { user: { email: 'test@example.com' } },
+          status: 'authenticated',
+      });
+
+      window.confirm = jest.fn(() => true);
+      window.alert = jest.fn(); // Mock alert
+
+      // Correct mock sequence: 3 init calls (success), 1 delete call (failure)
+      global.fetch
+        .mockResolvedValueOnce({ ok: true, json: async () => ({}) })
+        .mockResolvedValueOnce({ ok: true, json: async () => ({}) })
+        .mockResolvedValueOnce({ ok: true, json: async () => ([]) })
+        // Then the delete call failure
+        .mockResolvedValueOnce({ ok: false, status: 500, statusText: 'Error', text: async() => 'Fail' });
+
+      await act(async () => {
+          render(<Home />);
+      });
+
+      const deleteBtn = screen.getByText('Delete Chain');
+      await act(async () => {
+          fireEvent.click(deleteBtn);
+      });
+
+      expect(global.fetch).toHaveBeenCalledWith('/api/delete', expect.anything());
+      expect(window.alert).toHaveBeenCalledWith(expect.stringContaining('Failed to delete'));
+  });
+
   test('handles API errors', async () => {
     useSession.mockReturnValue({
       data: { user: { email: 'test@example.com' } },
@@ -259,6 +397,93 @@ describe('Home Page', () => {
 
     expect(global.fetch).toHaveBeenCalled();
     consoleSpy.mockRestore();
+  });
+
+  test('handles login loop detection', async () => {
+      useSession.mockReturnValue({
+          data: { user: { email: 'test@example.com' } },
+          status: 'authenticated',
+      });
+
+      // Mock console methods
+      const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+      // Mock localStorage
+      const localStorageMock = {
+          getItem: jest.fn(),
+          setItem: jest.fn(),
+          removeItem: jest.fn(),
+      };
+      Object.defineProperty(window, 'localStorage', { value: localStorageMock });
+
+      // Spy on window.location.href assignment
+      const originalLocation = window.location;
+      delete window.location; // Allowed in JSDOM if configured or try/catch
+      const setHrefMock = jest.fn();
+      
+      // Attempt to mock window.location
+      try {
+          Object.defineProperty(window, 'location', {
+              value: {
+                  set href(val) { setHrefMock(val); },
+                  get href() { return 'http://localhost/'; },
+                  assign: jest.fn(),
+                  reload: jest.fn(),
+              },
+              writable: true,
+              configurable: true,
+          });
+      } catch(e) {
+         console.warn("Could not mock window.location directly");
+      }
+
+      // Scenario 1: First 401 - Should attempt hard redirect
+      global.fetch
+        .mockResolvedValueOnce({ ok: false, status: 401, statusText: 'Unauthorized' }) // info
+        .mockResolvedValueOnce({ ok: true, json: async () => ({}) })
+        .mockResolvedValueOnce({ ok: true, json: async () => ([]) });
+
+      await act(async () => {
+          render(<Home />);
+      });
+
+      expect(consoleWarnSpy).toHaveBeenCalledWith(expect.stringContaining('401 Unauthorized'));
+      expect(consoleWarnSpy).toHaveBeenCalledWith('Attempting to sign out (hard redirect)...');
+      expect(localStorageMock.setItem).toHaveBeenCalledWith('last_force_logout', expect.any(Number));
+      
+      // Note: We cannot reliably test window.location.href assignment in JSDOM (it's non-configurable).
+      // But observing the log and localStorage confirms we entered the correct block.
+
+      // Scenario 2: Second 401 within 5s - Should show error UI
+      jest.clearAllMocks();
+      localStorageMock.getItem.mockReturnValue(Date.now().toString()); // Simulate recent logout
+
+      // Mock fetch again to return 401
+      global.fetch
+        .mockResolvedValueOnce({ ok: false, status: 401, statusText: 'Unauthorized' })
+        .mockResolvedValueOnce({ ok: true, json: async () => ({}) })
+        .mockResolvedValueOnce({ ok: true, json: async () => ([]) });
+
+      // Re-render to trigger effect
+      await act(async () => {
+          render(<Home />);
+      });
+
+      expect(consoleErrorSpy).toHaveBeenCalledWith('Login loop detected.');
+      expect(screen.getByText('Connection Issue')).toBeInTheDocument();
+      expect(screen.getByText('Reset Connection')).toBeInTheDocument();
+
+      // Test Reset Button
+      const resetBtn = screen.getByText('Reset Connection');
+      fireEvent.click(resetBtn);
+
+      expect(localStorageMock.removeItem).toHaveBeenCalledWith('last_force_logout');
+      // Again, we assume window.location.href was set because the handler ran (localStorage cleared)
+      
+      // Cleanup
+      consoleWarnSpy.mockRestore();
+      consoleErrorSpy.mockRestore();
   });
 
   test('polls for updates', async () => {

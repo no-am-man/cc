@@ -48,6 +48,7 @@ describe('API Endpoints', () => {
       expect(JSON.parse(res._getData())).toEqual({
         success: true,
         block: { hash: 'block-hash' },
+        nodeId: 'test-user',
       });
       expect(mockNode.mint).toHaveBeenCalledWith(50);
     });

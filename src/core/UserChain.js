@@ -11,7 +11,8 @@ class UserChain {
     this.state = {
         balance: 0,
         totalSupply: 0,
-        transactionCount: 0
+        transactionCount: 0,
+        assets: {} // Map of issuerId -> amount
     };
     this.processor = new BlockProcessor();
   }

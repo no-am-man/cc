@@ -9,7 +9,7 @@ jest.mock('../../src/core/UserNode', () => {
     };
 });
 
-const { getNodeForUser, getActiveNodes } = require('../../src/core/nodeManager');
+const { getNodeForUser, getActiveNodes, evictNode } = require('../../src/core/nodeManager');
 const UserNode = require('../../src/core/UserNode').default;
 
 describe('NodeManager', () => {
@@ -44,6 +44,25 @@ describe('NodeManager', () => {
         const node2 = await getNodeForUser('alice@test.com');
         expect(node1).toBe(node2);
         expect(node1.userId).toBe('alice@test.com');
+    });
+
+    test('should evict node', async () => {
+        await getNodeForUser('bob@test.com');
+        expect(getActiveNodes().has('bob@test.com')).toBe(true);
+
+        evictNode('bob@test.com');
+        expect(getActiveNodes().has('bob@test.com')).toBe(false);
+    });
+
+    test('evictNode should handle non-existent users gracefully', () => {
+        evictNode('non-existent');
+        // Should not throw
+        expect(getActiveNodes().size).toBe(0);
+    });
+
+    test('evictNode should ignore null userId', () => {
+        evictNode(null);
+        expect(getActiveNodes().size).toBe(0);
     });
 });
 

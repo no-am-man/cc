@@ -26,6 +26,13 @@ export default function Button({ onClick, children, variant = 'primary' }) {
         .secondary:hover {
           background: #ccc;
         }
+        .danger {
+          background: #dc3545;
+          color: white;
+        }
+        .danger:hover {
+          background: #bd2130;
+        }
       `}</style>
     </button>
   );

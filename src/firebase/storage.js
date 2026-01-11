@@ -1,8 +1,19 @@
-import { getFirestore, doc, getDoc, setDoc, collection, getDocs } from 'firebase/firestore';
+import { getFirestore, doc, getDoc, setDoc, deleteDoc, collection, getDocs } from 'firebase/firestore';
 import app from './firebase';
 
 // Pass the app instance explicitly to getFirestore
 const db = getFirestore(app);
+
+// Helper to delete a document
+export const deleteDocument = async (collectionName, docId) => {
+  try {
+    await deleteDoc(doc(db, collectionName, docId));
+    console.log(`✅ Deleted ${collectionName}/${docId}`);
+  } catch (e) {
+    console.error(`❌ Error deleting ${collectionName}/${docId}:`, e);
+    throw e;
+  }
+};
 
 // Helper to save a document
 export const saveDocument = async (collectionName, docId, data) => {

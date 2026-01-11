@@ -55,7 +55,18 @@ class BlockProcessor {
     }
 
     processReceive(block, state) {
-        state.balance += block.data.amount;
+        // Ensure assets object exists
+        if (!state.assets) state.assets = {};
+        
+        const assetId = block.data.fromAddress;
+        // Check if receiving my own coin (loopback) or external coin
+        // Ideally, we compare assetId with myId, but Processor doesn't know myId easily without context.
+        // However, 'fromAddress' in RECEIVE usually implies an external source.
+        
+        const currentVal = state.assets[assetId] || 0;
+        state.assets[assetId] = currentVal + block.data.amount;
+        
+        // Note: We DO NOT add to state.balance, as that represents MY currency inventory.
     }
 
     processContract(block, state) {

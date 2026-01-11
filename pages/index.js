@@ -14,13 +14,51 @@ export default function Home() {
   const [sendMessage, setSendMessage] = useState('');
   const [trustUser, setTrustUser] = useState('');
   const [chain, setChain] = useState([]);
+  const [loginLoopDetected, setLoginLoopDetected] = useState(false);
 
-  const api = async (path, options) => {
-    const res = await fetch(`/api/${path}`, options);
+  const api = async (path, options = {}) => {
+    const res = await fetch(`/api/${path}`, {
+        ...options,
+        headers: {
+            'Content-Type': 'application/json',
+            ...options.headers,
+        },
+        credentials: 'include', // Force cookies to be sent (fix for session loss in API)
+    });
     if (!res.ok) {
+        if (res.status === 401) {
+            console.warn(`[API] 401 Unauthorized for ${path}.`);
+            
+            // Prevent infinite loops using localStorage
+            if (typeof window !== 'undefined') {
+                const lastLogout = localStorage.getItem('last_force_logout');
+                // If we forced logout recently (within 15s), STOP and show error.
+                if (lastLogout && Date.now() - Number(lastLogout) < 15000) {
+                     console.error("Login loop detected.");
+                     setLoginLoopDetected(true);
+                     return null;
+                }
+
+                // Retry logic: If this is the first 401, maybe just wait a bit?
+                // No, if session is invalid, we must re-login.
+                console.warn("Backend rejected session (401). Frontend session exists. Mismatch detected.");
+                
+                // Only force logout if we have a session but API rejects it
+                if (session) {
+                    console.warn("Attempting to sign out (hard redirect)...");
+                    localStorage.setItem('last_force_logout', Date.now());
+                    window.location.href = '/api/auth/signout?callbackUrl=/';
+                }
+            }
+            return null;
+        }
         const text = await res.text();
         console.error(`API Error ${path}:`, text);
         throw new Error(`API Error: ${res.status} ${res.statusText}`);
+    }
+    // If successful, clear the force logout flag so we don't carry over "bad reputation"
+    if (typeof window !== 'undefined') {
+        localStorage.removeItem('last_force_logout');
     }
     return res.json();
   };
@@ -35,7 +73,7 @@ export default function Home() {
   }, [chain]);
 
   const fetchData = async () => {
-    if (!session) return;
+    if (!session || loginLoopDetected) return;
     
     // Skip fetch if we just performed an action
     const timeSinceLastAction = Date.now() - lastActionTimeRef.current;
@@ -85,6 +123,7 @@ export default function Home() {
     
     // Optimistic / Immediate Update from Response
     if (data.success && data.block) {
+        console.log(`[UI] Minted successfully for Node ID: '${data.nodeId}'`);
         lastActionTimeRef.current = Date.now(); // Pause polling
         setChain(prev => [...prev, data.block]);
         
@@ -129,6 +168,33 @@ export default function Home() {
     // fetchData();
   };
 
+  const handleDownloadChain = () => {
+      const jsonString = JSON.stringify(chain, null, 2);
+      const blob = new Blob([jsonString], { type: 'application/json' });
+      const href = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = href;
+      link.download = `chain-${session?.user?.email || 'node'}-${Date.now()}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(href);
+  };
+
+  const handleDeleteChain = async () => {
+      if (!confirm("⚠️ ARE YOU SURE? \nThis will PERMANENTLY DELETE your blockchain and reset your balance to 0.\n\nThis action cannot be undone.")) {
+          return;
+      }
+      
+      try {
+          await api('delete', { method: 'POST' });
+          alert("Blockchain deleted successfully.");
+          window.location.reload(); 
+      } catch (e) {
+          alert("Failed to delete: " + e.message);
+      }
+  };
+
   return (
     <div className="container">
       <Head>
@@ -142,6 +208,8 @@ export default function Home() {
         {session && (
             <div className="user-info">
                 <span>{session.user.email}</span>
+                <Button onClick={handleDownloadChain}>Download Blockchain</Button>
+                <Button onClick={handleDeleteChain} variant="danger">Delete Chain</Button>
                 <Button variant="secondary" onClick={() => signOut()}>Sign Out</Button>
             </div>
         )}
@@ -154,6 +222,18 @@ export default function Home() {
             <p>Your Personal Economy on the Blockchain.</p>
             <Button onClick={() => signIn('google')}>Connect with Google</Button>
           </div>
+        ) : loginLoopDetected ? (
+            <div className="hero">
+                <h1>Connection Issue</h1>
+                <p>We detected a login loop due to stale cookies.</p>
+                <Button onClick={() => {
+                    localStorage.removeItem('last_force_logout');
+                    // Force a hard reload to clear application state
+                    window.location.href = '/api/auth/signout?callbackUrl=/'; 
+                }}>
+                    Reset Connection
+                </Button>
+            </div>
         ) : (
           <div className="dashboard">
             

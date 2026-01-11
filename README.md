@@ -16,6 +16,7 @@ Built on a **Multi-Chain (Block Lattice)** architecture, each user controls thei
 *   **Silver Standard**: All currencies are denominated in **CC** (Credit Commons), loosely pegged to 1g of Silver.
 *   **P2P Federation**: Nodes communicate via Firestore (Serverless Bus) to exchange assets and synchronize chains.
 *   **Smart Contracts**: Programmable money with secure, sandboxed JavaScript contracts.
+*   **Data Sovereignty**: Download your full blockchain history as JSON anytime.
 
 ---
 

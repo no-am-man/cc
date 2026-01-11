@@ -4,14 +4,15 @@ jest.mock('firebase/firestore', () => ({
     doc: jest.fn(),
     getDoc: jest.fn(),
     setDoc: jest.fn(),
+    deleteDoc: jest.fn(),
     collection: jest.fn(),
     getDocs: jest.fn(),
 }));
 
 jest.mock('../../src/firebase/firebase', () => ({}));
 
-const { getFirestore, doc, getDoc, setDoc, collection, getDocs } = require('firebase/firestore');
-const { saveDocument, getDocument, getCollectionDocs } = require('../../src/firebase/storage');
+const { getFirestore, doc, getDoc, setDoc, deleteDoc, collection, getDocs } = require('firebase/firestore');
+const { saveDocument, getDocument, getCollectionDocs, deleteDocument } = require('../../src/firebase/storage');
 
 describe('Storage Adapter', () => {
     beforeEach(() => {
@@ -19,6 +20,32 @@ describe('Storage Adapter', () => {
     });
 
     test('saveDocument should write to firestore', async () => {
+        setDoc.mockResolvedValue(true);
+        await saveDocument('users', 'alice', { name: 'Alice' });
+        expect(doc).toHaveBeenCalled();
+        expect(setDoc).toHaveBeenCalledWith(undefined, { name: 'Alice' }, { merge: true });
+    });
+
+    test('saveDocument should handle errors', async () => {
+        setDoc.mockRejectedValue(new Error('Write failed'));
+        await expect(saveDocument('users', 'alice', {}))
+            .rejects.toThrow('Write failed');
+    });
+
+    test('deleteDocument should delete from firestore', async () => {
+        deleteDoc.mockResolvedValue(true);
+        await deleteDocument('users', 'alice');
+        expect(doc).toHaveBeenCalled();
+        expect(deleteDoc).toHaveBeenCalled();
+    });
+
+    test('deleteDocument should handle errors', async () => {
+        deleteDoc.mockRejectedValue(new Error('Delete failed'));
+        await expect(deleteDocument('users', 'alice'))
+            .rejects.toThrow('Delete failed');
+    });
+
+    test('getDocument should return data if exists', async () => {
         setDoc.mockResolvedValue(true);
         await saveDocument('users', 'alice', { name: 'Alice' });
         expect(doc).toHaveBeenCalled();
