@@ -212,10 +212,87 @@ export default function Home() {
 
       <main>
         {!session ? (
-          <div className="hero">
-            <h1>Welcome to Re-Public</h1>
-            <p>Your Personal Economy on the Blockchain.</p>
-            <Button onClick={() => signIn('google')}>Connect with Google</Button>
+          <div className="landing-page">
+            <section className="landing-hero">
+                <h1>The Platform State</h1>
+                <p>A Proposal for Polycentric Federalism. Reimagining the nation-state as a neutral operating system for competing jurisdictions.</p>
+                <div style={{ marginTop: '2rem' }}>
+                    <Button onClick={() => signIn('google')} size="large">Connect to the Platform</Button>
+                </div>
+            </section>
+
+            <section className="landing-section">
+                <h2 className="section-title">The Theoretical Crisis</h2>
+                <div className="landing-grid">
+                    <div className="feature-card">
+                        <h3>The Problem of the Republic</h3>
+                        <p>Centralized states provide stability and common defense but inevitably suffer from the "Ratchet Effect"—a continuous expansion of power that erodes individual liberty and imposes "one-size-fits-all" policies on diverse populations.</p>
+                    </div>
+                    <div className="feature-card">
+                        <h3>The Problem of Anarchy</h3>
+                        <p>Pure private law societies (Anarcho-Capitalism) offer maximum liberty and market efficiency but suffer from high transaction costs in dispute resolution and vulnerability to foreign conquest ("The Warlord Problem").</p>
+                    </div>
+                    <div className="feature-card" style={{ border: '2px solid #2563eb' }}>
+                        <h3 style={{ color: '#2563eb' }}>The Synthesis: PubFed</h3>
+                        <p>We propose a "Public Federation" that acts as a constitutional shell, hosting internal "Special Economic Zones" (SEZs) that function as market-driven governance providers.</p>
+                    </div>
+                </div>
+            </section>
+
+            <section className="landing-section" style={{ background: 'white' }}>
+                <h2 className="section-title">The Architecture</h2>
+                <div className="landing-grid">
+                    <div className="feature-card">
+                        <h3>1. The Kernel</h3>
+                        <p><strong>The Federal Government (Hardware Layer)</strong></p>
+                        <p>Function strictly limited to maintaining the physical integrity of the platform: National Defense and the "Meta-Constitution". Forbidden from enacting social or economic legislation.</p>
+                    </div>
+                    <div className="feature-card">
+                        <h3>2. The Applications</h3>
+                        <p><strong>The Zones (Software Layer)</strong></p>
+                        <p>Autonomous Charter Zones providing day-to-day governance: police, contract law, education, healthcare. Zones compete for residents.</p>
+                    </div>
+                    <div className="feature-card">
+                        <h3>3. The SLA</h3>
+                        <p><strong>The Meta-Constitution</strong></p>
+                        <p>Acts as a Service Level Agreement enforcing negative rights: Right of Exit, Right of Due Process, and the "No Warlords" Clause.</p>
+                    </div>
+                </div>
+            </section>
+
+            <section className="landing-section">
+                <h2 className="section-title">A Day in the Life (2045)</h2>
+                <div className="story-timeline">
+                    <div className="story-event">
+                        <span className="story-time">07:00 AM</span>
+                        <h3>The Commute</h3>
+                        <p>Elias wakes up in "San Futuro" (Zone A), a hyper-capitalist Tech Zone with 0% tax but high subscription fees. He boards the maglev train to work.</p>
+                    </div>
+                    <div className="story-event">
+                        <span className="story-time">08:30 AM</span>
+                        <h3>Crossing the Border</h3>
+                        <p>He enters "New Solidarity" (Zone B), a Syndicalist Collective. His smart-glasses notify him: "Speed limits enforced. Public drug use illegal." His phone switches to the local mesh network.</p>
+                    </div>
+                    <div className="story-event">
+                        <span className="story-time">09:00 AM</span>
+                        <h3>The Office</h3>
+                        <p>Elias works in New Solidarity because of its strong IP protections for artists. When a client in "Arcadia" (Zone C) fails to pay, the Federal Tribunal AI issues a summary judgment in 3 seconds based on their smart contract.</p>
+                    </div>
+                    <div className="story-event">
+                        <span className="story-time">06:00 PM</span>
+                        <h3>The "Exit" Decision</h3>
+                        <p>His friend Sarah decides to leave "Ironhold" (Zone D) because the governor raised security fees. Thanks to the Federal Right of Exit, she instantly books a move to a coastal zone matching her lifestyle.</p>
+                    </div>
+                </div>
+            </section>
+
+            <section className="landing-section" style={{ textAlign: 'center' }}>
+                <h2 className="section-title">Join the Network</h2>
+                <p style={{ maxWidth: '600px', margin: '0 auto 2rem', fontSize: '1.2rem', color: '#64748b' }}>
+                    It is not Utopia. It is simply a market where the product is "Law," and the consumer is King.
+                </p>
+                <Button onClick={() => signIn('google')} size="large">Connect to the Platform</Button>
+            </section>
           </div>
         ) : loginLoopDetected ? (
             <div className="hero">
@@ -352,8 +429,9 @@ export default function Home() {
       <style jsx>{`
         .container {
           min-height: 100vh;
-          background-color: #f7f9fc;
-          font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Oxygen, Ubuntu, Cantarell, Fira Sans, Droid Sans, Helvetica Neue, sans-serif;
+          background-color: #f8fafc; /* slate-50 */
+          color: #0f172a; /* slate-900 */
+          font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
         }
         .header {
             background: white;
@@ -361,12 +439,16 @@ export default function Home() {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+            position: sticky;
+            top: 0;
+            z-index: 50;
         }
         .logo {
             font-size: 1.5rem;
-            font-weight: bold;
-            color: #333;
+            font-weight: 800;
+            color: #0f172a;
+            letter-spacing: -0.05em;
         }
         .user-info {
             display: flex;
@@ -374,18 +456,105 @@ export default function Home() {
             gap: 1rem;
         }
         main {
-          padding: 2rem;
-          max-width: 1200px;
+          padding: 0;
+          max-width: 100%;
           margin: 0 auto;
         }
-        .hero {
-            text-align: center;
-            padding: 5rem 0;
+        
+        /* Landing Page Styles */
+        .landing-section {
+            padding: 5rem 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
         }
+        .landing-hero {
+            text-align: center;
+            padding: 8rem 2rem;
+            background: linear-gradient(to bottom, #f8fafc, #e2e8f0);
+        }
+        .landing-hero h1 {
+            font-size: 4rem;
+            font-weight: 900;
+            margin-bottom: 1rem;
+            letter-spacing: -0.05em;
+            background: linear-gradient(135deg, #0f172a 0%, #334155 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .landing-hero p {
+            font-size: 1.5rem;
+            color: #64748b;
+            max-width: 800px;
+            margin: 0 auto 3rem;
+            line-height: 1.6;
+        }
+        .landing-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 3rem;
+            margin-top: 3rem;
+        }
+        .feature-card {
+            background: white;
+            padding: 2rem;
+            border-radius: 1rem;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05);
+            border: 1px solid #e2e8f0;
+        }
+        .feature-card h3 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            color: #0f172a;
+        }
+        .feature-card p {
+            color: #64748b;
+            line-height: 1.6;
+        }
+        .section-title {
+            text-align: center;
+            font-size: 2.5rem;
+            font-weight: 800;
+            margin-bottom: 3rem;
+            color: #0f172a;
+        }
+        .story-timeline {
+            position: relative;
+            max-width: 800px;
+            margin: 0 auto;
+            border-left: 2px solid #e2e8f0;
+            padding-left: 2rem;
+        }
+        .story-event {
+            margin-bottom: 3rem;
+            position: relative;
+        }
+        .story-event::before {
+            content: '';
+            position: absolute;
+            left: -2.6rem;
+            top: 0.5rem;
+            width: 1rem;
+            height: 1rem;
+            background: #2563eb;
+            border-radius: 50%;
+            border: 4px solid white;
+            box-shadow: 0 0 0 1px #e2e8f0;
+        }
+        .story-time {
+            font-weight: bold;
+            color: #2563eb;
+            margin-bottom: 0.5rem;
+            display: block;
+        }
+        
+        /* Dashboard Styles */
         .dashboard {
             display: flex;
             flex-direction: column;
             gap: 2rem;
+            padding: 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
         }
         .stats-row, .actions-row {
             display: grid;
@@ -403,9 +572,15 @@ export default function Home() {
         }
         .form-group input {
             padding: 0.8rem;
-            border: 1px solid #ddd;
-            border-radius: 5px;
+            border: 1px solid #e2e8f0;
+            border-radius: 0.5rem;
             font-size: 1rem;
+            transition: all 0.2s;
+        }
+        .form-group input:focus {
+            outline: none;
+            border-color: #2563eb;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
         }
         .btn-group {
             display: flex;
@@ -416,34 +591,41 @@ export default function Home() {
         }
         .chain-table {
             width: 100%;
-            border-collapse: collapse;
+            border-collapse: separate;
+            border-spacing: 0;
             font-size: 0.9rem;
         }
-        .chain-table th, .chain-table td {
-            text-align: left;
-            padding: 0.75rem;
-            border-bottom: 1px solid #eee;
-        }
         .chain-table th {
-            background-color: #f8f9fa;
+            text-align: left;
+            padding: 1rem;
+            border-bottom: 2px solid #e2e8f0;
+            color: #64748b;
             font-weight: 600;
+            background-color: #f8fafc;
+        }
+        .chain-table td {
+            padding: 1rem;
+            border-bottom: 1px solid #e2e8f0;
+            color: #334155;
         }
         .badge {
-            padding: 0.25rem 0.5rem;
-            border-radius: 4px;
-            font-size: 0.8rem;
-            font-weight: bold;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
         }
-        .badge.MINT { background-color: #e6f4ea; color: #1e7e34; }
-        .badge.SEND { background-color: #fff3cd; color: #856404; }
-        .badge.RECEIVE { background-color: #d1ecf1; color: #0c5460; }
-        .badge.CONTRACT { background-color: #e2e3e5; color: #383d41; }
+        .badge.MINT { background-color: #dcfce7; color: #15803d; }
+        .badge.SEND { background-color: #fef9c3; color: #a16207; }
+        .badge.RECEIVE { background-color: #dbeafe; color: #1d4ed8; }
+        .badge.CONTRACT { background-color: #f1f5f9; color: #475569; }
       `}</style>
       <style jsx global>{`
         body {
             margin: 0;
             padding: 0;
-            background-color: #f7f9fc;
+            background-color: #f8fafc;
         }
         * {
             box-sizing: border-box;

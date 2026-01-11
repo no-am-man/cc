@@ -28,14 +28,15 @@ describe('Home Page', () => {
   test('renders welcome screen when not signed in', () => {
     useSession.mockReturnValue({ data: null, status: 'unauthenticated' });
     render(<Home />);
-    expect(screen.getByText('Welcome to Re-Public')).toBeInTheDocument();
-    expect(screen.getByText('Connect with Google')).toBeInTheDocument();
+    expect(screen.getByText('The Platform State')).toBeInTheDocument();
+    expect(screen.getAllByText('Connect to the Platform')[0]).toBeInTheDocument();
   });
 
   test('calls signIn when connect button is clicked', () => {
     useSession.mockReturnValue({ data: null, status: 'unauthenticated' });
     render(<Home />);
-    fireEvent.click(screen.getByText('Connect with Google'));
+    // There are two buttons now, click the first one in Hero
+    fireEvent.click(screen.getAllByText('Connect to the Platform')[0]);
     expect(signIn).toHaveBeenCalledWith('google');
   });
 
