@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useSession, signIn, signOut } from 'next-auth/react';
 import Head from 'next/head';
 import Card from '../src/components/Card';
@@ -25,13 +25,23 @@ export default function Home() {
     return res.json();
   };
 
-  const [lastActionTime, setLastActionTime] = useState(0);
+  // Use Ref to avoid stale closures in setInterval
+  const lastActionTimeRef = useRef(0);
+  const chainRef = useRef([]);
+
+  // Keep chainRef in sync with state
+  useEffect(() => {
+      chainRef.current = chain;
+  }, [chain]);
 
   const fetchData = async () => {
     if (!session) return;
     
-    // Skip fetch if we just performed an action (to allow Firestore to catch up)
-    if (Date.now() - lastActionTime < 5000) {
+    // Skip fetch if we just performed an action
+    const timeSinceLastAction = Date.now() - lastActionTimeRef.current;
+    
+    // Use <= to ensure we skip even if interval aligns exactly with the pause duration
+    if (timeSinceLastAction <= 5000) {
         return;
     }
 
@@ -41,9 +51,19 @@ export default function Home() {
         api('portfolio'),
         api('chain'),
         ]);
+
+        // Stale Read Protection:
+        // If the server returns a shorter chain than we currently have locally (optimistically),
+        // it means the server is stale (eventual consistency). Ignore this update.
+        // We assume the chain only grows.
+        if (Array.isArray(chainData) && chainData.length < chainRef.current.length) {
+            console.warn(`[Stale Read] Server chain height ${chainData.length} < Local ${chainRef.current.length}. Ignoring update.`);
+            return; 
+        }
+
         setInfo(infoData);
         setPortfolio(portfolioData);
-        setChain(chainData);
+        setChain(Array.isArray(chainData) ? chainData : []);
     } catch (e) {
         console.error("Failed to fetch data", e);
     }
@@ -65,7 +85,7 @@ export default function Home() {
     
     // Optimistic / Immediate Update from Response
     if (data.success && data.block) {
-        setLastActionTime(Date.now()); // Pause polling
+        lastActionTimeRef.current = Date.now(); // Pause polling
         setChain(prev => [...prev, data.block]);
         
         setInfo(prev => {
@@ -95,7 +115,7 @@ export default function Home() {
         message: sendMessage,
       }),
     });
-    setLastActionTime(Date.now()); // Pause polling
+    lastActionTimeRef.current = Date.now(); // Pause polling
     // fetchData(); // Let the poll pick it up later or implement optimistic update here too
   };
 
@@ -105,7 +125,7 @@ export default function Home() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action, userId: trustUser }),
     });
-    setLastActionTime(Date.now()); // Pause polling
+    lastActionTimeRef.current = Date.now(); // Pause polling
     // fetchData();
   };
 
