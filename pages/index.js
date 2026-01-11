@@ -168,30 +168,25 @@ export default function Home() {
     // fetchData();
   };
 
-  const handleDownloadChain = () => {
+  const handleViewChain = () => {
       const jsonString = JSON.stringify(chain, null, 2);
       const blob = new Blob([jsonString], { type: 'application/json' });
       const href = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = href;
-      link.download = `chain-${session?.user?.email || 'node'}-${Date.now()}.json`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(href);
+      window.open(href, '_blank');
   };
 
-  const handleDeleteChain = async () => {
-      if (!confirm("⚠️ ARE YOU SURE? \nThis will PERMANENTLY DELETE your blockchain and reset your balance to 0.\n\nThis action cannot be undone.")) {
+  const handleResetAccount = async () => {
+      if (!confirm("⚠️ DANGER ZONE: RESET ACCOUNT? \n\nThis will PERMANENTLY DELETE your:\n- Blockchain & Balance\n- Private Keys\n- Trust Network\n\nIt will be as if you never existed. This cannot be undone.")) {
           return;
       }
       
       try {
           await api('delete', { method: 'POST' });
-          alert("Blockchain deleted successfully.");
-          window.location.reload(); 
+          alert("Account reset successfully. Redirecting...");
+          // Force a full clean sign out and reload
+          window.location.href = '/api/auth/signout?callbackUrl=/';
       } catch (e) {
-          alert("Failed to delete: " + e.message);
+          alert("Failed to reset: " + e.message);
       }
   };
 
@@ -208,8 +203,8 @@ export default function Home() {
         {session && (
             <div className="user-info">
                 <span>{session.user.email}</span>
-                <Button onClick={handleDownloadChain}>Download Blockchain</Button>
-                <Button onClick={handleDeleteChain} variant="danger">Delete Chain</Button>
+                <Button onClick={handleViewChain}>View Blockchain</Button>
+                <Button onClick={handleResetAccount} variant="danger">Reset Account</Button>
                 <Button variant="secondary" onClick={() => signOut()}>Sign Out</Button>
             </div>
         )}

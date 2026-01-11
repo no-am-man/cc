@@ -43,7 +43,8 @@ describe('UserChain Class', () => {
 
     test('receiveTransaction should increase balance', () => {
         chain.receiveTransaction('sender', 50, 'hash123');
-        expect(chain.state.balance).toBe(50);
+        // In Multi-Chain, receiving increases assets holding, not native balance
+        expect(chain.state.assets['sender']).toBe(50);
         const block = chain.getLatestBlock();
         expect(block.type).toBe('RECEIVE');
     });

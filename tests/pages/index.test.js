@@ -59,7 +59,7 @@ describe('Home Page', () => {
 
     const headerEmail = screen.getAllByText('test@example.com')[0];
     expect(headerEmail).toBeInTheDocument();
-    expect(screen.getByText('Download Blockchain')).toBeInTheDocument();
+    expect(screen.getByText('View Blockchain')).toBeInTheDocument();
     expect(screen.getByText('Node Status')).toBeInTheDocument();
   });
 
@@ -235,7 +235,7 @@ describe('Home Page', () => {
     }));
   });
 
-  test('handles blockchain download', async () => {
+  test('handles blockchain view', async () => {
       useSession.mockReturnValue({
           data: { user: { email: 'test@example.com' } },
           status: 'authenticated',
@@ -251,14 +251,15 @@ describe('Home Page', () => {
           render(<Home />);
       });
 
-      // Mock URL.createObjectURL
-      global.URL.createObjectURL = jest.fn();
-      global.URL.revokeObjectURL = jest.fn();
+      // Mock URL.createObjectURL and window.open
+      global.URL.createObjectURL = jest.fn(() => 'blob:http://localhost/abc');
+      window.open = jest.fn();
 
-      const downloadBtn = screen.getByText('Download Blockchain');
-      fireEvent.click(downloadBtn);
+      const viewBtn = screen.getByText('View Blockchain');
+      fireEvent.click(viewBtn);
 
       expect(global.URL.createObjectURL).toHaveBeenCalled();
+      expect(window.open).toHaveBeenCalledWith('blob:http://localhost/abc', '_blank');
   });
 
   test('handles blockchain deletion', async () => {
@@ -288,12 +289,12 @@ describe('Home Page', () => {
 
       try {
         delete window.location;
-        window.location = { reload: reloadMock };
+        window.location = { reload: reloadMock, href: '' };
       } catch (e) {
         // Fallback if delete fails (some JSDOM versions)
         console.warn("Could not delete window.location, trying defineProperty");
         Object.defineProperty(window, 'location', {
-            value: { reload: reloadMock },
+            value: { reload: reloadMock, href: '' },
             configurable: true,
         });
       }
@@ -311,7 +312,7 @@ describe('Home Page', () => {
       });
       window.alert = jest.fn();
 
-      const deleteBtn = screen.getByText('Delete Chain');
+      const deleteBtn = screen.getByText('Reset Account');
       await act(async () => {
           fireEvent.click(deleteBtn);
       });
@@ -337,7 +338,7 @@ describe('Home Page', () => {
           render(<Home />);
       });
 
-      const deleteBtn = screen.getByText('Delete Chain');
+      const deleteBtn = screen.getByText('Reset Account');
       fireEvent.click(deleteBtn);
 
       expect(window.confirm).toHaveBeenCalled();
@@ -365,13 +366,13 @@ describe('Home Page', () => {
           render(<Home />);
       });
 
-      const deleteBtn = screen.getByText('Delete Chain');
+      const deleteBtn = screen.getByText('Reset Account');
       await act(async () => {
           fireEvent.click(deleteBtn);
       });
 
       expect(global.fetch).toHaveBeenCalledWith('/api/delete', expect.anything());
-      expect(window.alert).toHaveBeenCalledWith(expect.stringContaining('Failed to delete'));
+      expect(window.alert).toHaveBeenCalledWith(expect.stringContaining('Failed to reset'));
   });
 
   test('handles API errors', async () => {

@@ -38,7 +38,12 @@ class UserNode {
     await this.loadExternalChains();
 
     // 5. Listen for updates
-    listenForBlocks((block) => this.handleIncomingBlock(block));
+    // Determine start time for listening
+    // If we loaded a chain, start from its last update. 
+    // If it's a new/reset chain, start from NOW to ignore history.
+    const startTime = this.lastChainUpdate || Date.now();
+    console.log(`👂 Listening for blocks since: ${new Date(startTime).toISOString()}`);
+    listenForBlocks((block) => this.handleIncomingBlock(block), startTime);
 
     this.initialized = true;
     console.log(`✅ Node ${this.userId} ready.`);
@@ -93,9 +98,13 @@ class UserNode {
         // Sync Portfolio with Chain State
         this.syncPortfolio();
 
+        // Track last update time
+        this.lastChainUpdate = data.lastUpdated || 0;
+
         console.log(`✅ Loaded chain for ${this.userId}. Height: ${this.chain.chain.length}`);
     } else {
         console.warn(`⚠️ No chain found for ${this.userId}. Using Genesis block.`);
+        this.lastChainUpdate = null; // Mark as new/reset
     }
   }
 

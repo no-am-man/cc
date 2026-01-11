@@ -1,5 +1,17 @@
 import { createMocks } from 'node-mocks-http';
+
+// Mock next-auth to prevent 'jose' ESM issues
+jest.mock('next-auth', () => ({
+  getServerSession: jest.fn()
+}));
+
+// Mock the auth options BEFORE importing the handler
+jest.mock('../../pages/api/auth/[...nextauth]', () => ({
+    authOptions: {}
+}));
+
 import mintHandler from '../../pages/api/mint';
+import { getServerSession } from 'next-auth'; // Import mocked function to control it
 import infoHandler from '../../pages/api/info';
 import { getSession } from 'next-auth/react';
 import { getNodeForUser } from '../../src/core/nodeManager';
@@ -29,7 +41,9 @@ describe('API Endpoints', () => {
     };
 
     getNodeForUser.mockResolvedValue(mockNode);
+    // getSession is client side, getServerSession is server side
     getSession.mockResolvedValue({ user: { email: 'test-user' } });
+    getServerSession.mockResolvedValue({ user: { email: 'test-user' } }); // Mock server session
     Oracle.getPrice.mockReturnValue(0.85);
   });
 

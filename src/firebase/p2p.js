@@ -1,4 +1,4 @@
-import { getFirestore, collection, addDoc, onSnapshot } from "firebase/firestore";
+import { getFirestore, collection, addDoc, onSnapshot, query, where } from "firebase/firestore";
 import app from './firebase';
 
 /**
@@ -20,11 +20,17 @@ const broadcastBlock = async (block) => {
 /**
  * Listens for new blocks from the network using Firestore.
  * @param {function} callback - The function to be called when a new block is received.
+ * @param {number} startTime - Optional. Only listen for blocks created after this timestamp.
  * @returns {function} - The unsubscribe function.
  */
-const listenForBlocks = (callback) => {
+const listenForBlocks = (callback, startTime = 0) => {
   const db = getFirestore(app);
-  const q = collection(db, "blocks");
+  let q = collection(db, "blocks");
+
+  // If a start time is provided, filter query
+  if (startTime > 0) {
+      q = query(collection(db, "blocks"), where("timestamp", ">", startTime));
+  }
 
   const unsubscribe = onSnapshot(q, (querySnapshot) => {
     querySnapshot.docChanges().forEach((change) => {

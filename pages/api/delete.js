@@ -19,8 +19,12 @@ export default async function handler(req, res) {
   try {
     console.log(`[Delete API] Deleting chain for: ${userId}`);
     
-    // 1. Delete from Firestore
-    await deleteDocument('chains', userId);
+    // 1. Delete from Firestore (All User Data)
+    await Promise.all([
+        deleteDocument('chains', userId),
+        deleteDocument('keys', userId),
+        deleteDocument('trust', userId)
+    ]);
     
     // 2. Evict from Memory
     evictNode(userId);
